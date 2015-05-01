@@ -23,5 +23,7 @@ simrrls -o test3 -L 5000 -l 200 -e 0.001 -d 10,2
 simrrls -o test4 -d 10,2 -f pairddrad -s -50,200 
 
 #### Examples of using a non-default input topology
-echo "((a:1,b:1):1,c:2);" > treefile
+```bash
+echo "((a:1,b:1):1,c:2);" > treefile  
 simrrls -o test4 -d 10,2 -f pairddrad -s -50,200 -t treefile
+```
