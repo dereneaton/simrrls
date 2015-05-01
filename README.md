@@ -1,8 +1,13 @@
-### _simrrls_
+## _simrrls_
 
-A program to simulate raw radseq-like sequence data with options to modify tree, population, sequencing, and formatting parameters. Updated usage examples coming soon. 
+A program to simulate raw radseq-like sequence data with options to modify tree, population, sequencing, and formatting parameters. More detailed documentation coming soon. 
 
-### Example usage: 
+#### Requirements
++ Python 2.7+
++ Numpy python module
++ Egglib python module
+
+## Example usage: 
 
 #### Using default parameters
 simrrls -o test1
