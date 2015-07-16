@@ -11,6 +11,8 @@
 
 ###############################################################
 ##  change log                                               ##
+##  1.06: - cutter args changed from -c1 and -c2 to just -c  ##
+##            and seeds changed from -s1 and -s2 to just -r  ##
 ##  1.05: - major re-write/cleanup, and opt-parsing added    ##
 ##            and user-supplied topology                     ##
 ##  1.04: - added option to change sequencing depth          ##
@@ -83,14 +85,20 @@ def parseopts(opts):
             params["tree"] = str(arg)
         if opt in ["-o"]:
             params["outname"] = str(arg)
-        if opt in ["-s1"]:
-            params["seed1"] = int(arg)
-        if opt in ["-s2"]:
-            params["seed2"] = int(arg)
-        if opt in ["-c1"]:
-            params["cut1"] = str(arg)
-        if opt in ["-c2"]:
-            params["cut2"] = str(arg)
+        if opt in ["-r"]:
+            if "," in arg:
+                seed1, seed2 = arg.strip().split(",")
+            else:
+                seed1 = arg
+            params["seed1"] = int(seed1)
+            params["seed2"] = int(seed2)
+        if opt in ["-c"]:
+            if "," in arg:
+                cut1, cut2 = arg.strip().split(",")
+                params["cut2"] = str(cut2)
+            else:
+                cut1 = arg
+            params["cut1"] = str(cut1)
         if opt in ["-v"]:
             params["verbose"] = bool(arg)
         if opt in ["-log"]:
@@ -146,10 +154,8 @@ def usage():
     print "\t -d  <str>   depth of sequencing (def=10,0). N(mean,std) per copy"
     print "\t -t  <str>   tree w br lens (file or text) or use default"
     print "\t -f  <str>   format (def=rad), opts: ddrad,gbs,pairddrad,pairgbs)"
-    print "\t -s1 <int>   random seed 1 (def 123456)"
-    print "\t -s2 <int>   random seed 2 (def 987654)"
-    print "\t -c1 <int>   restriction cut site 1 (def CTGCAG) ->TGCAG"
-    print "\t -c2 <int>   restriction cut site 2 (def CAATTG) ->AATTG"
+    print "\t -r  <int>   random number seeds, def= 123456,987654"
+    print "\t -c  <int>   restriction cut site(s) def=CTGCAG,GAATTC"
     print "\t -v  <int>   verbose: 1=screen, 2=log, 3=both"
     
 
@@ -180,7 +186,6 @@ def is_ultrametric(tree):
         for node in dist_to_root:
             print node[0], "dist_to_root:", node[1]
         sys.exit(2)
-
 
 
 def defaulttree(params):
@@ -303,7 +308,7 @@ def barcoder(aligns, params, tiptax, outgroup, Barcodes):
         print "\tcreating new barcode map"
         Barcodes[names[0]] = "CATCAT"
         for name in names:
-            while name not in Barcodes.keys():
+            while name not in Barcodes:
                 bbs = np.random.randint(0, 3, 6)
                 bcd = "".join([bases[i] for i in bbs])
                 if all([twodiffs(bcd, bb) for bb in Barcodes.values()]):
@@ -311,7 +316,7 @@ def barcoder(aligns, params, tiptax, outgroup, Barcodes):
                         Barcodes[name] = bcd
         ## creates random barcodes and writes map to file "
         with open(params["outname"]+".barcodes", 'w') as barout:
-            bnames = list(Barcodes.keys())
+            bnames = list(Barcodes)
             bnames.sort()
             for bcd in bnames:
                 if outgroup not in bcd:
@@ -358,18 +363,10 @@ def locus_dropout(datatype, ingroupseq, outgroupseq, cut1, cut2):
         drop2 = any([muts1, muts2]) 
         return any([drop1, drop2])
 
-# def locus_dropout2(datatype, ingroupseq, outgroupseq, cut1, cut2):
-#     """ check if mutation occurs in cut site """
-#     if datatype == 'rad':
-#         return 
-#     if 'gbs' in datatype:
-#         return 
-#     if 'ddrad' in datatype:
-#         return 
 
 
 def dressitup(loldic, Barcodes, params,
-              locuslength, counter):
+              locuslength, counter, stepsize):
     """ return a list of sequences all dressed up """
     seqs1 = []
     seqs2 = []
@@ -379,7 +376,7 @@ def dressitup(loldic, Barcodes, params,
     if stdevdepth == "0":
         stdevdepth = 1e-9
 
-    for loc in range(100):
+    for loc in range(stepsize):
         ## sample fragment in size selection window for this locus
         frag1, frag2 = params["insert"].split(',')
         insert = np.random.randint(int(frag1), int(frag2))
@@ -469,11 +466,16 @@ def stacklist(thiscopy, params, Barcodes,
                samp, seqs1, seqs2):
     """ returns seqs formatted for the given data type """
 
+    ## start of adapters/primers
     illumina_p1 = "ACGACGCTCTTCCGATCT"
     illumina_p2 = "AGATCGGAAGAGCTCGTATG"
+
+    ## assume cutter have one base cut
     over1 = params['cut1'][1:]
     over2 = params['cut2'][1:]
 
+    ## embed seq data beween adapters and with barcodes
+    ## and restriction sites to look like raw data
     if params["datatype"] in ['ddrad', 'pairddrad']:
         thiscopy1 = ("A"*30)+illumina_p1+Barcodes[samp]+over1+\
                     "".join(thiscopy)+revcomp(over2)+illumina_p2+"A"*30
@@ -492,7 +494,7 @@ def stacklist(thiscopy, params, Barcodes,
     here = startleft+len("CGATCT")
     sss = thiscopy1[here:here+100]
 
-    if "X" not in samp:
+    if "4X" not in samp:
         if counter <= params["nLoci"]:
             seqs1.append("@lane1_locus"+str(counter)+"_"+\
                          str(loldic.keys().index(samp))+"_R1_"+str(copy)+\
@@ -544,7 +546,6 @@ def stacklist(thiscopy, params, Barcodes,
 
 def createlog(params, tiptaxa):
     """ prints log file to log (and to screen) """
-
     if params["verbose"]:
         print "\tSequencing error rate = 0.0005 "
         print "\tNloci =", params["nLoci"]
@@ -561,7 +562,7 @@ if __name__ == "__main__":
 
     ## parse command line options
     ARGS = sys.argv[1:]
-    SMALLFLAGS = "I:D:L:u:N:i:e:s:d:t:f:o:s1:s2:c1:c2:v:l:"
+    SMALLFLAGS = "I:D:L:u:N:i:e:s:d:t:f:o:r:c:v:l:"
     BIGFLAGS = []
     try:
         OPTS, ARGS = getopt.getopt(ARGS, SMALLFLAGS, BIGFLAGS)
@@ -587,6 +588,9 @@ if __name__ == "__main__":
     THETA = 4.*PARAMS["N"]*PARAMS["mu"]*LOCUSLENGTH
     print "\tTHETA=", THETA/LOCUSLENGTH
 
+    ## initialize random number sampling for numpy
+    np.random.seed(PARAMS['seed1'])
+
     ## setup mutator
     MUTATOR = egglib.simul.CoalesceFiniteAlleleMutator(theta=THETA,
                                                       alleles=4,
@@ -605,13 +609,20 @@ if __name__ == "__main__":
     if PARAMS["datatype"] in ['gbs']:
         PARAMS["nLoci"] = PARAMS["nLoci"]/2   
 
+    ## set stepsize for simulation depending on Nloci
+    STEPSIZE = 1000
+    if PARAMS["nLoci"] < 1000:
+        STEPSIZE = 100
+    elif PARAMS["nLoci"] > 10000:
+        STEPSIZE = 5000
+
     BARCODES = {}
     COUNTER = 0
     while COUNTER < PARAMS["nLoci"]: 
         SEED1 = PARAMS["seed1"] * (COUNTER+1)
         SEED2 = PARAMS["seed2"] * (COUNTER+1)
         ## performs simulation of 100 loci at a time"
-        ALIGNS = egglib.simul.coalesce(PARAMSET, MUTATOR, 100,
+        ALIGNS = egglib.simul.coalesce(PARAMSET, MUTATOR, STEPSIZE,
                                        random=(SEED1, SEED2))
 
         ## creates barcodes if not made yet and fill D dict."
@@ -623,7 +634,8 @@ if __name__ == "__main__":
                                           BARCODES, 
                                           PARAMS,
                                           LOCUSLENGTH, 
-                                          COUNTER)
+                                          COUNTER, 
+                                          STEPSIZE)
 
         OUT1.write("".join(SEQS1))
         if PARAMS["datatype"] in ['pairddrad', 'pairgbs']:
