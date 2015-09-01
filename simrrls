@@ -42,9 +42,9 @@ def parseopts(opts):
     params = {'indels': 0,
               'dropout': 0,
               'nLoci': 1000,
-              'Ninds': 1,
               'error': 0.0005,
               'N': 1e5,
+              'Ninds': 1,
               'mu': 5e-9,
               'length': 100,
               'insert': "300,800",
@@ -410,8 +410,8 @@ def dressitup(loldic, Barcodes, params,
                 ## exclude outgroup taxon used for detecting restriction site
                 ## mutations and indels use both chromosomes 
                 if params["dropout"]:
-                    print loldic[samp][loc][0][:10]
-                    print loldic['4X0'][loc][0][:10] 
+                    #print loldic[samp][loc][0][:10]
+                    #print loldic['4X0'][loc][0][:10] 
 
                     ## remove locus if mutation arises in restriction site"
                     passed1 = [list(loldic[samp][loc][0]) for \
@@ -434,6 +434,7 @@ def dressitup(loldic, Barcodes, params,
                                     copy in range(copy2)]
 
                 allpass = passed1+passed2
+                #print len(allpass)
 
                 for copy in range(len(allpass)):
                     nowlength = locuslength
