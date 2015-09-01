@@ -3,14 +3,12 @@
 """
 ##################################################
 ##  Script to simulate RADseq-like data         ##
-##  author:  Deren Eaton                        ##
-##  contact: deren.eaton@yale.edu               ##
-##  date:    4/16/15                            ##
-##  version: 1.05                               ##
 ##################################################
 
 ###############################################################
 ##  change log                                               ##
+##  1.07: - allow different N for different tips             ##
+##            and set N=1 for anc. state for dropout         ##
 ##  1.06: - cutter args changed from -c1 and -c2 to just -c  ##
 ##            and seeds changed from -s1 and -s2 to just -r  ##
 ##  1.05: - major re-write/cleanup, and opt-parsing added    ##
@@ -23,6 +21,11 @@
 ##  1.01: - barcodes differ by 2 bp by default               ##
 ###############################################################
 """
+
+author = "Deren Eaton"
+contact = "deren.eaton@yale.edu"
+date = "4/16/15"
+version = "1.07"
 
 ## load modules                                        
 import egglib
@@ -51,8 +54,8 @@ def parseopts(opts):
               'depth': "10,1e-9",
               'cut1': 'CTGCAG',
               'cut2': 'GAATTC',
-              'seed1': 123456,
-              'seed2': 987654,
+              'seed1': 12345678,
+              'seed2': 98765432,
               'verbose': '',
               'logfile': ''
               }
@@ -115,8 +118,7 @@ def checkopts(params):
                               'ddrad', 'pairddrad']:
         print '\n\tsimulating '+params["datatype"]+" data"
     else:
-        print 'datatype not recognized'
-        sys.exit()
+        sys.exit('\n\tdatatype not recognized')
 
     ## warning if overlap occurs
     #if int(params["insert"].split(",")[0]) < 200:
@@ -202,20 +204,16 @@ def defaulttree(params):
     nodeABCDEFGHIJKLX  = 2.5*divscale
     nodeABCDEFGHIJKL   = 2.5*divscale
     nodeABCDEFGH       = 2.*divscale
-    #nodeIJKL           = 2.*divscale
-    #nodeEFGH           = 2.*divscale
     nodeABCD           = 1.5*divscale
-    #nodeIJK            = 1.*divscale
-    #nodeEFG            = 1.*divscale
     nodeABC            = 1.*divscale
-    #nodeIJ             = 0.5*divscale
-    #nodeEF             = 0.5*divscale
     nodeAB             = 0.5*divscale
 
     # sets the two parameter classes
     paramSet = egglib.simul.CoalesceParamSet(singleSamples=None, 
                             doubleSamples=[params["Ninds"]]*len(tiptax),
                             M=0.0)
+                            #N=[int(params["N"])]*(len(tiptax)-1)+[1e6])
+
     ## clade 1"
     paramSet.populationFusion(nodeABCD, 0, 3)     ## D into A
     paramSet.populationFusion(nodeABC, 0, 2)      ## C into A
@@ -229,7 +227,7 @@ def defaulttree(params):
     paramSet.populationFusion(nodeABC, 8, 10)     ## K into I
     paramSet.populationFusion(nodeAB, 8, 9)       ## J into I
     ## together and outgroup"
-    paramSet.populationFusion(nodeABCDEFGHIJKLX, 0, 12)   ## X into A
+    paramSet.populationFusion(nodeABCDEFGHIJKLX, 0, 12)   ## I into A    
     paramSet.populationFusion(nodeABCDEFGHIJKL, 0, 8)     ## I into A
     paramSet.populationFusion(nodeABCDEFGH, 0, 4)         ## E into A
     return tiptax, paramSet
@@ -246,6 +244,7 @@ def usertree(params):
                                 singleSamples=None,
                                 doubleSamples=[params["Ninds"]]*len(tiptax),
                                 M=0.0)
+    #                           N=[params["N"]]*(len(tiptax)-1)+[1])
 
     ## add outgroup tip for polarization
     treelength = lengthtotip(tree.root_node())
@@ -260,6 +259,7 @@ def usertree(params):
             tip2 = min([tiptax.index(l) for l in \
                         node.descendants()[1].leaves_down()])
             paramset.populationFusion(date, tip1, tip2)
+    
     ## fuse outgroup "4X0"
     paramset.populationFusion(treelength, 0, len(tiptax)-1)
     return tiptax, paramset
@@ -315,7 +315,7 @@ def barcoder(aligns, params, tiptax, outgroup, Barcodes):
                     if not any([i in bcd for i in [over1, over2]]):
                         Barcodes[name] = bcd
         ## creates random barcodes and writes map to file "
-        with open(params["outname"]+".barcodes", 'w') as barout:
+        with open(params["outname"]+"_barcodes.txt", 'w') as barout:
             bnames = list(Barcodes)
             bnames.sort()
             for bcd in bnames:
@@ -380,15 +380,16 @@ def dressitup(loldic, Barcodes, params,
         ## sample fragment in size selection window for this locus
         frag1, frag2 = params["insert"].split(',')
         insert = np.random.randint(int(frag1), int(frag2))
-        frag = (2*params["length"])+insert
+        frag = (2*params["length"])+insert    
+        #print 'fragment length', frag
 
-        ## do we keep this locus in the outgroup sample?
+        ## make sure locus passes filter in the ancestor/outgroup sample?
         if not locus_dropout(params["datatype"],
-                             loldic['4X0'][loc][0][:frag],
-                             loldic['4X0'][loc][0][:frag],
-                             params['cut1'], params['cut2']):
-            counter += 1
-
+                         loldic['4X0'][loc][0][:frag],
+                         loldic['4X0'][loc][0][:frag],
+                         params['cut1'], params['cut2']):
+            counter += 1    
+            
             if params["indels"]:
                 skip = 0
                 ## indel = prob. site is checked for indel-mut, skip 'skip' bp"
@@ -400,28 +401,32 @@ def dressitup(loldic, Barcodes, params,
                 where = [wh, le]
 
             for samp in loldic:
+                #print loldic[samp][loc][0][:20], 'what'
                 ## sample depth of sequencing at this locus    
                 copy1 = int(round(np.random.normal(float(meandepth),
-                                                  float(stdevdepth))))
+                                                   float(stdevdepth))))
                 copy2 = int(round(np.random.normal(float(meandepth), 
-                                                  float(stdevdepth))))
+                                                   float(stdevdepth))))
                 ## exclude outgroup taxon used for detecting restriction site
                 ## mutations and indels use both chromosomes 
                 if params["dropout"]:
+                    print loldic[samp][loc][0][:10]
+                    print loldic['4X0'][loc][0][:10] 
+
                     ## remove locus if mutation arises in restriction site"
                     passed1 = [list(loldic[samp][loc][0]) for \
                                copy in range(copy1) if not \
                                locus_dropout(params["datatype"], 
-                                        loldic[samp][loc][0][:frag],
-                                        loldic['4X0'][loc][0][:frag],                                        
-                                        params['cut1'], params['cut2'])]
+                                             loldic[samp][loc][0][:frag],
+                                             loldic['4X0'][loc][0][:frag],                                        
+                                             params['cut1'], params['cut2'])]
 
                     passed2 = [list(loldic[samp][loc][1]) for \
-                               copy in range(copy2) if not \
-                               locus_dropout(params["datatype"],
-                                        loldic[samp][loc][1][:frag],
-                                        loldic['4X0'][loc][0][:frag],                                        
-                                        params['cut1'], params['cut2'])]
+                                copy in range(copy2) if not \
+                                locus_dropout(params["datatype"],
+                                              loldic[samp][loc][1][:frag],
+                                              loldic['4X0'][loc][0][:frag],                                        
+                                              params['cut1'], params['cut2'])]
                 else:
                     passed1 = [list(loldic[samp][loc][0]) for \
                                     copy in range(copy1)] 
@@ -452,8 +457,10 @@ def dressitup(loldic, Barcodes, params,
 
                     ## shorten fragment to potentially overlapping length"
                     ## 0------->insert<-------[frag]
+                    #print 'frag', "".join(thiscopy[:20]), '...', "".join(thiscopy[frag-20:frag])
                     thiscopy = thiscopy[:frag]
 
+                    ## formats reads for the appropriate data type
                     seqs1, seqs2, counter = stacklist(thiscopy, params, 
                                                 Barcodes, loldic, copy, 
                                                 counter, samp, seqs1, seqs2)
@@ -483,63 +490,79 @@ def stacklist(thiscopy, params, Barcodes,
         thiscopy1 = ("A"*30)+illumina_p1+Barcodes[samp]+over1+\
                      "".join(thiscopy)+revcomp(over1)+illumina_p2+"A"*30
 
-    if params["datatype"] == 'gbs':
+    if 'gbs' in params["datatype"]: #  == 'gbs':
         thiscopy2 = ("A"*30)+illumina_p1+Barcodes[samp]+over1+\
                     revcomp("".join(thiscopy))+revcomp(over1)+\
                     illumina_p2+"A"*30
-                    
-    ## sequence read1 from 5' end "
-    startleft = thiscopy1.index("CGATCT")
-    ## ---->
-    here = startleft+len("CGATCT")
-    sss = thiscopy1[here:here+100]
+
+    ## print out reminder of the read structure                    
+    # print " ".join(['1', thiscopy1[30:48],
+    #                      thiscopy1[48:54],
+    #                      thiscopy1[54:59],
+    #                      thiscopy1[59:66],                         
+    #                      '...',
+    #                      thiscopy1[-62:-55],                         
+    #                      thiscopy1[-55:-50],
+    #                      thiscopy1[-50:-28]])
+
+    # print " ".join(['2', thiscopy2[30:48],
+    #                      thiscopy2[48:54],
+    #                      thiscopy2[54:59],
+    #                      thiscopy2[59:66],                         
+    #                      '...',
+    #                      thiscopy2[-62:-55],                         
+    #                      thiscopy2[-55:-50],
+    #                      thiscopy2[-50:-28]])
 
     if "4X" not in samp:
         if counter <= params["nLoci"]:
+            ## always add to seqs1
+            ## sequence read1 from 5' end "
+            ## ----> start from primer
+            start = thiscopy1.index("CGATCT")+len("CGATCT")
+            sss = thiscopy1[start:start+params['length']]
             seqs1.append("@lane1_locus"+str(counter)+"_"+\
                          str(loldic.keys().index(samp))+"_R1_"+str(copy)+\
                         " 1:N:0:"+"\n"+sss+"\n+\n"+("B"*len(sss))+"\n")
 
-            ## add the second orientation of the read...
-            if params["datatype"] == 'gbs':
+            ## if gbs add fragment2 to the list of first reads
+            if 'gbs' in params["datatype"]:
                 ## sequence fragment from 3' end for GBS
-                startleft = thiscopy2.index("CGATCT")
-                ## ---->
-                here = startleft+len("CGATCT")
-                sss = thiscopy2[here:here+100]
-                if "X" not in samp:
-                    #if counter <= params["nLoci"]:
-                    seqs1.append("@lane1_fakedata"+str(counter)+\
-                                 "_"+str(loldic.keys().index(samp))+\
-                                 "_R1_"+str(copy)+" 1:N:0:"+"\n"+\
-                                 sss+"\n+\n"+("B"*len(sss))+"\n")
+                start = thiscopy2.index("CGATCT")+len("CGATCT")
+                sss = thiscopy2[start:start+params["length"]]
+                seqs1.append("@lane1_clocus"+str(counter)+\
+                             "_"+str(loldic.keys().index(samp))+\
+                             "_R1_"+str(copy)+" 1:N:0:"+"\n"+\
+                             sss+"\n+\n"+("B"*len(sss))+"\n")
 
             ## sequence read2 from 3' end for paired read "
             if 'pair' in params['datatype']:
-                startright = thiscopy1.rindex("AGATCG")
+                start = thiscopy1.rindex("AGATCG")
                 ## <----
-                here = len(thiscopy1)-startright
-                sss = thiscopy1[-1*(here+100):-here]
-                if "X" not in samp:
-                    #if counter <= params["nLoci"]:
-                    seqs2.append("@lane1_locus"+str(counter)+"_"+\
-                                str(loldic.keys().index(samp))+\
-                               "_R2_"+str(copy)+" 1:N:0:"+"\n"+\
-                                revcomp(sss)+"\n+\n"+("B"*len(sss))+"\n")
+                sss = thiscopy1[start-params['length']:start]
+                #sss = thiscopy1[-1*(start+params['length']):-start]
+                seqs2.append("@lane1_locus"+str(counter)+"_"+\
+                            str(loldic.keys().index(samp))+\
+                            "_R2_"+str(copy)+" 1:N:0:"+"\n"+\
+                            revcomp(sss)+"\n+\n"+("B"*len(sss))+"\n")
 
+            ## add both R1 and R2 to second reads
+            ## r2 was just added above, so here just add R1
             if params["datatype"] == 'pairgbs':
                 ##  double check this 
                 ##  sequence read2 from 5' end for GBS"
-                startleft = thiscopy2.index("CGATCT")
+                #startleft = thiscopy2.index("CGATCT")
                 ## ---->
-                here = startleft+len("CGATCT")
-                sss = thiscopy2[here:here+100]
-                if "X" not in samp:
-                    #if counter <= params["nLoci"]:
-                    seqs2.append("@lane1_locus"+str(counter)+"_"+\
-                                str(loldic.keys().index(samp))+\
-                                "_R1_"+str(copy)+" 1:N:0:"+"\n"+\
-                                sss+"\n+\n"+("B"*len(sss))+"\n")
+                #here = startleft+len("CGATCT")
+                #sss = thiscopy2
+                #sss = thiscopy2[-1*(start+params['length']):-start]                
+                sss = thiscopy2[start-params['length']:start]                
+                #sss = thiscopy2[here:here+params['length']]
+                #if counter <= params["nLoci"]:
+                seqs2.append("@lane1_clocus"+str(counter)+"_"+\
+                            str(loldic.keys().index(samp))+\
+                            "_R2_"+str(copy)+" 1:N:0:"+"\n"+\
+                            revcomp(sss)+"\n+\n"+("B"*len(sss))+"\n")
     return seqs1, seqs2, counter
 
 
@@ -558,8 +581,9 @@ def createlog(params, tiptaxa):
         print "\tInsert range=("+params["insert"]+"),", "maxfrag=", maxfrag
 
 
-if __name__ == "__main__":
 
+def main():
+    """ main script """
     ## parse command line options
     ARGS = sys.argv[1:]
     SMALLFLAGS = "I:D:L:u:N:i:e:s:d:t:f:o:r:c:v:l:"
@@ -584,6 +608,7 @@ if __name__ == "__main__":
     OUTGROUP = "4X0"
 
     ## get theta
+    ## all data are simulated at the max fragment size of window
     LOCUSLENGTH = int(PARAMS["insert"].split(',')[1])+(2*PARAMS["length"])
     THETA = 4.*PARAMS["N"]*PARAMS["mu"]*LOCUSLENGTH
     print "\tTHETA=", THETA/LOCUSLENGTH
@@ -593,14 +618,14 @@ if __name__ == "__main__":
 
     ## setup mutator
     MUTATOR = egglib.simul.CoalesceFiniteAlleleMutator(theta=THETA,
-                                                      alleles=4,
-                                                      randomAncestralState=True)
+                                                       alleles=4,
+                                                       randomAncestralState=True)
     MUTATOR.setSites(LOCUSLENGTH)
 
     ## create log file and print to screen
     createlog(PARAMS, TIPTAX)
  
-    ## simulate data
+    ## open files to write seq data to
     OUT1 = gzip.open(PARAMS["outname"]+"_R1_.fastq.gz", 'wb')
     if PARAMS["datatype"] in ['pairddrad', 'pairgbs']:
         OUT2 = gzip.open(PARAMS["outname"]+"_R2_.fastq.gz", 'wb')
@@ -610,24 +635,29 @@ if __name__ == "__main__":
         PARAMS["nLoci"] = PARAMS["nLoci"]/2   
 
     ## set stepsize for simulation depending on Nloci
-    STEPSIZE = 1000
-    if PARAMS["nLoci"] < 1000:
+    if PARAMS["nLoci"] >= 100:
         STEPSIZE = 100
-    elif PARAMS["nLoci"] > 10000:
-        STEPSIZE = 5000
+    elif PARAMS["nLoci"] >= 1000:
+        STEPSIZE = 500
+    elif PARAMS["nLoci"] >= 2000:
+        STEPSIZE = 1000
+    else:
+        STEPSIZE = 20
 
+    ## simulate the data
     BARCODES = {}
     COUNTER = 0
     while COUNTER < PARAMS["nLoci"]: 
+        ##  this is a problem if cut is too frequent
         SEED1 = PARAMS["seed1"] * (COUNTER+1)
         SEED2 = PARAMS["seed2"] * (COUNTER+1)
-        ## performs simulation of 100 loci at a time"
+
+        ## performs simulation of setpsize loci at a time"
         ALIGNS = egglib.simul.coalesce(PARAMSET, MUTATOR, STEPSIZE,
                                        random=(SEED1, SEED2))
 
         ## creates barcodes if not made yet and fill D dict."
-        LOLDIC, BARCODES = barcoder(ALIGNS, PARAMS, TIPTAX, 
-                                    OUTGROUP, BARCODES)
+        LOLDIC, BARCODES = barcoder(ALIGNS, PARAMS, TIPTAX, OUTGROUP, BARCODES)
 
         ## dresses up data to be fastq and puts in errors, indels, etc."
         SEQS1, SEQS2, COUNTER = dressitup(LOLDIC,
@@ -644,3 +674,9 @@ if __name__ == "__main__":
     OUT1.close()
     if PARAMS["datatype"] in ['pairddrad', 'pairgbs']:
         OUT2.close()
+
+
+## The main script
+if __name__ == "__main__":
+    main()
+
