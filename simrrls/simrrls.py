@@ -1,134 +1,31 @@
 #!/usr/bin/env python2
 
 """
-##################################################
-##  Script to simulate RADseq-like data         ##
-##################################################
-
-###############################################################
-##  change log                                               ##
-##  1.07: - allow different N for different tips             ##
-##            and set N=1 for anc. state for dropout         ##
-##  1.06: - cutter args changed from -c1 and -c2 to just -c  ##
-##            and seeds changed from -s1 and -s2 to just -r  ##
-##  1.05: - major re-write/cleanup, and opt-parsing added    ##
-##            and user-supplied topology                     ##
-##  1.04: - added option to change sequencing depth          ##
-##        - dropout is now controlled by the data type       ##
-##            and sequence length with insert                ##
-##  1.03: - paired data file names have _R1_ & _R2_          ##
-##  1.02: - dropout is only affected by arg 2 not data type  ##
-##  1.01: - barcodes differ by 2 bp by default               ##
-###############################################################
+Script to simulate RADseq-like data 
 """
 
-author = "Deren Eaton"
-contact = "deren.eaton@yale.edu"
-date = "4/16/15"
-version = "1.07"
-
-## load modules                                        
-import egglib
 import sys
 import numpy as np
+import egglib
 import gzip
-import getopt
+# pylint: disable=E1101
 
-
-def parseopts(opts):
-    """ parses command line arguments """
-
-    ## defaults
-    params = {'indels': 0,
-              'dropout': 0,
-              'nLoci': 1000,
-              'error': 0.0005,
-              'N': 1e5,
-              'Ninds': 1,
-              'mu': 5e-9,
-              'length': 100,
-              'insert': "300,800",
-              'datatype': 'rad',
-              'tree': "default 12 tip tree",
-              'outname': "out",
-              'depth': "10,1e-9",
-              'cut1': 'CTGCAG',
-              'cut2': 'GAATTC',
-              'seed1': 12345678,
-              'seed2': 98765432,
-              'verbose': '',
-              'logfile': ''
-              }
-
-
-    for opt, arg in opts:
-        if opt in ["-I"]:
-            params["indels"] = float(arg)
-        if opt in ["-D"]:
-            params["dropout"] = int(arg)
-        if opt in ["-L"]:
-            params["nLoci"] = int(arg)
-        if opt in ["-l"]:
-            params["length"] = int(arg)
-        if opt in ["-i"]:
-            params["Ninds"] = int(arg)
-        if opt in ["-N"]:
-            params["N"] = int(float(arg))
-        if opt in ["-u"]:
-            params["mu"] = float(arg)
-        if opt in ["-s"]:
-            params["insert"] = str(arg)
-        if opt in ["-d"]:
-            params["depth"] = str(arg)
-        if opt in ["-f"]:
-            params["datatype"] = str(arg)
-        if opt in ["-e"]:
-            params["error"] = float(arg)
-        if opt in ["-t"]:
-            params["tree"] = str(arg)
-        if opt in ["-o"]:
-            params["outname"] = str(arg)
-        if opt in ["-r"]:
-            if "," in arg:
-                seed1, seed2 = arg.strip().split(",")
-            else:
-                seed1 = arg
-            params["seed1"] = int(seed1)
-            params["seed2"] = int(seed2)
-        if opt in ["-c"]:
-            if "," in arg:
-                cut1, cut2 = arg.strip().split(",")
-                params["cut2"] = str(cut2)
-            else:
-                cut1 = arg
-            params["cut1"] = str(cut1)
-        if opt in ["-v"]:
-            params["verbose"] = bool(arg)
-        if opt in ["-log"]:
-            params["logfile"] = bool(arg)
-
-    return params
 
 
 def checkopts(params):
     """ print errors if options are incorrect"""
 
     ## should move tree checking functions here...
-    if params["datatype"] in ['rad', 'gbs', 'pairgbs',
-                              'ddrad', 'pairddrad']:
-        print '\n\tsimulating '+params["datatype"]+" data"
-    else:
+    if params.datatype not in ['rad', 'gbs', 'pairgbs',
+                               'ddrad', 'pairddrad']:
         sys.exit('\n\tdatatype not recognized')
 
-    ## warning if overlap occurs
-    #if int(params["insert"].split(",")[0]) < 200:
-    #    if params['datatype'] not in ['rad', 'ddrad']:
-    #       print "\tmin fragment length allows reads to overlap "
-    if int(params["insert"].split(",")[0]) < 0:
+    ## warning
+    if params.min_insert < 0:
         print "\tmin insert size allows read overlaps/adapter sequences "
 
     ## which tree to use
-    if params["tree"] == "default 12 tip tree": 
+    if not params.tree:
         tiptax, paramset = defaulttree(params)
     else:
         ## check the tree string or file
@@ -137,29 +34,6 @@ def checkopts(params):
     return tiptax, paramset
 
 
-def usage():
-    """
-    brief description of various flags and options for this script
-    """
-    print "\nHere is how you can use this script\n"
-    print "Usage: python %s"%sys.argv[0]
-    print "\t -o  <str>   output file prefix name (def 'out')"
-    print "\t -I  <float> probability mutation is an indel (default 0.0) "
-    print "\t -D  <bool>  allow locus dropout (def 0) "
-    print "\t -L  <int>   Number of loci to simulate (def 1000) "
-    print "\t -l  <int>   locus length (def 100) "    
-    print "\t -u  <float> per-site mutation rate (def 1e-9) "
-    print "\t -N  <int>   effective population size (def 1e5) "
-    print "\t -i  <int>   individuals sampled per tip taxon (def 1) "
-    print "\t -s  <str>   insert size per locus : U(min,max) def=300,800 "
-    print "\t -e  <int>   sequencing error rate (def 0.0005) "    
-    print "\t -d  <str>   depth of sequencing (def=10,0). N(mean,std) per copy"
-    print "\t -t  <str>   tree w br lens (file or text) or use default"
-    print "\t -f  <str>   format (def=rad), opts: ddrad,gbs,pairddrad,pairgbs)"
-    print "\t -r  <int>   random number seeds, def= 123456,987654"
-    print "\t -c  <int>   restriction cut site(s) def=CTGCAG,GAATTC"
-    print "\t -v  <int>   verbose: 1=screen, 2=log, 3=both"
-    
 
 def lengthtotip(node):
     """ returns node height """
@@ -168,6 +42,7 @@ def lengthtotip(node):
         dec += node.branch_to(node.descendants()[0])
         node = node.descendants()[0]
     return dec
+
 
 
 def is_ultrametric(tree):
@@ -190,15 +65,16 @@ def is_ultrametric(tree):
         sys.exit(2)
 
 
+
 def defaulttree(params):
     """ supply default tree """
     tiptax = [i+j for i, j in zip(list("1111222233334"),
                                   list("ABCDEFGHIJKLX"))]
 
-    ## simulate species with divergence times"
-    # newick = """(((((A:2,B:2):2,C:4):4,D:8):4,
-    #             (((E:2,F:2):2,G:4):4,H:8):4):4,
-    #             (((I:2,J:2):2,K:4):4,L:8):8,X:16):16;"""
+    # """ simulate species with divergence times
+    # newick = (((((A:2,B:2):2,C:4):4,D:8):4,
+    #          (((E:2,F:2):2,G:4):4,H:8):4):4,
+    #          (((I:2,J:2):2,K:4):4,L:8):8,X:16):16;"""
 
     divscale = 1.0
     nodeABCDEFGHIJKLX  = 2.5*divscale
@@ -209,28 +85,29 @@ def defaulttree(params):
     nodeAB             = 0.5*divscale
 
     # sets the two parameter classes
-    paramSet = egglib.simul.CoalesceParamSet(singleSamples=None, 
-                            doubleSamples=[params["Ninds"]]*len(tiptax),
+    paramset = egglib.simul.CoalesceParamSet(
+                            singleSamples=None, 
+                            doubleSamples=params.Ninds*len(tiptax),
                             M=0.0)
                             #N=[int(params["N"])]*(len(tiptax)-1)+[1e6])
-
     ## clade 1"
-    paramSet.populationFusion(nodeABCD, 0, 3)     ## D into A
-    paramSet.populationFusion(nodeABC, 0, 2)      ## C into A
-    paramSet.populationFusion(nodeAB, 0, 1)       ## B into A
+    paramset.populationFusion(nodeABCD, 0, 3)     ## D into A
+    paramset.populationFusion(nodeABC, 0, 2)      ## C into A
+    paramset.populationFusion(nodeAB, 0, 1)       ## B into A
     ## clade 2"
-    paramSet.populationFusion(nodeABCD, 4, 7)     ## H into E
-    paramSet.populationFusion(nodeABC, 4, 6)      ## G into E
-    paramSet.populationFusion(nodeAB, 4, 5)       ## F into E
+    paramset.populationFusion(nodeABCD, 4, 7)     ## H into E
+    paramset.populationFusion(nodeABC, 4, 6)      ## G into E
+    paramset.populationFusion(nodeAB, 4, 5)       ## F into E
     ## clade 3"
-    paramSet.populationFusion(nodeABCD, 8, 11)    ## L into I
-    paramSet.populationFusion(nodeABC, 8, 10)     ## K into I
-    paramSet.populationFusion(nodeAB, 8, 9)       ## J into I
+    paramset.populationFusion(nodeABCD, 8, 11)    ## L into I
+    paramset.populationFusion(nodeABC, 8, 10)     ## K into I
+    paramset.populationFusion(nodeAB, 8, 9)       ## J into I
     ## together and outgroup"
-    paramSet.populationFusion(nodeABCDEFGHIJKLX, 0, 12)   ## I into A    
-    paramSet.populationFusion(nodeABCDEFGHIJKL, 0, 8)     ## I into A
-    paramSet.populationFusion(nodeABCDEFGH, 0, 4)         ## E into A
-    return tiptax, paramSet
+    paramset.populationFusion(nodeABCDEFGHIJKLX, 0, 12)   ## I into A    
+    paramset.populationFusion(nodeABCDEFGHIJKL, 0, 8)     ## I into A
+    paramset.populationFusion(nodeABCDEFGH, 0, 4)         ## E into A
+    return tiptax, paramset
+
 
 
 def usertree(params):
@@ -244,7 +121,6 @@ def usertree(params):
                                 singleSamples=None,
                                 doubleSamples=[params["Ninds"]]*len(tiptax),
                                 M=0.0)
-    #                           N=[params["N"]]*(len(tiptax)-1)+[1])
 
     ## add outgroup tip for polarization
     treelength = lengthtotip(tree.root_node())
@@ -265,12 +141,14 @@ def usertree(params):
     return tiptax, paramset
 
 
+
 def twodiffs(bara, barb):
     "requires two base differences between barcodes"
     if len(bara) == len(barb):
         sames = [bara[i] == barb[i] for i in range(len(bara))]
         if sames.count(False) > 1:
             return True
+
 
 
 def barcoder(aligns, params, tiptax, outgroup, Barcodes):
@@ -327,10 +205,12 @@ def barcoder(aligns, params, tiptax, outgroup, Barcodes):
 
 def mutate(base):
     "introduce point sequencing errors"
+
     nbase = list("ATGC")[np.random.randint(0, 4)]
     while nbase == base:
         nbase = list("ATGC")[np.random.randint(0, 4)]
     return nbase
+
 
 
 def revcomp(seq):
@@ -338,6 +218,7 @@ def revcomp(seq):
     rcseq = seq.replace('A', 't').replace('T', 'a').\
                 replace('C', 'g').replace('G', 'c')
     return rcseq[::-1].upper()
+
 
 
 def locus_dropout(datatype, ingroupseq, outgroupseq, cut1, cut2):
@@ -365,8 +246,9 @@ def locus_dropout(datatype, ingroupseq, outgroupseq, cut1, cut2):
 
 
 
-def dressitup(loldic, Barcodes, params,
+def dressitup(loldic, barcodes, params,
               locuslength, counter, stepsize):
+
     """ return a list of sequences all dressed up """
     seqs1 = []
     seqs2 = []
@@ -403,10 +285,11 @@ def dressitup(loldic, Barcodes, params,
             for samp in loldic:
                 #print loldic[samp][loc][0][:20], 'what'
                 ## sample depth of sequencing at this locus    
-                copy1 = int(round(np.random.normal(float(meandepth),
-                                                   float(stdevdepth))))
-                copy2 = int(round(np.random.normal(float(meandepth), 
-                                                   float(stdevdepth))))
+                # pylint: disable=E1101
+                copy1 = int(round(np.random.normal(
+                            float(meandepth), float(stdevdepth))))
+                copy2 = int(round(np.random.normal(
+                            float(meandepth), float(stdevdepth))))
                 ## exclude outgroup taxon used for detecting restriction site
                 ## mutations and indels use both chromosomes 
                 if params["dropout"]:
@@ -568,116 +451,77 @@ def stacklist(thiscopy, params, Barcodes,
 
 
 
-def createlog(params, tiptaxa):
-    """ prints log file to log (and to screen) """
-    if params["verbose"]:
-        print "\tSequencing error rate = 0.0005 "
-        print "\tNloci =", params["nLoci"]
-        print "\tDepth per allele = N("+params["depth"]+")"
-        print "\t"+str(len(tiptaxa)-1), "taxa with", params["Ninds"], "samples/taxon"
-        print "\tTopology =", params["tree"]
-        print "\tIndels arise at frequency of", params["indels"]
-        print "\tLocus dropout =", bool(params["dropout"])
-        maxfrag = int(params["insert"].split(',')[1])+(2*params["length"])
-        print "\tInsert range=("+params["insert"]+"),", "maxfrag=", maxfrag
-
-
-
-def main():
-    """ main script """
-    ## parse command line options
-    ARGS = sys.argv[1:]
-    SMALLFLAGS = "I:D:L:u:N:i:e:s:d:t:f:o:r:c:v:l:"
-    BIGFLAGS = []
-    try:
-        OPTS, ARGS = getopt.getopt(ARGS, SMALLFLAGS, BIGFLAGS)
-        if not OPTS:
-            usage()
-            sys.exit(2)
-    except getopt.GetoptError:
-        print "Incorrect options passed"
-        usage()
-        sys.exit()
-
+def run(params):
     ## get params
-    PARAMS = parseopts(OPTS)
-    TIPTAX, PARAMSET = checkopts(PARAMS)
+    tiptax, paramset = checkopts(params)
 
     ## overhang from cuts at Pst1 (and) at EcoR1
-    OVER1 = PARAMS['cut1'][1:]
-    OVER2 = PARAMS['cut2'][1:]
-    OUTGROUP = "4X0"
+    outgroup = "4X0"
 
     ## get theta
     ## all data are simulated at the max fragment size of window
-    LOCUSLENGTH = int(PARAMS["insert"].split(',')[1])+(2*PARAMS["length"])
-    THETA = 4.*PARAMS["N"]*PARAMS["mu"]*LOCUSLENGTH
-    print "\tTHETA=", THETA/LOCUSLENGTH
+    locuslength = params.min_insert+(2*params.length)
+    theta = 4.*params.N*params.mu*locuslength
+    print("\tTHETA=", theta/locuslength)
 
     ## initialize random number sampling for numpy
-    np.random.seed(PARAMS['seed1'])
+    np.random.seed(params.seed1)  # pylint: disable=E1101
 
     ## setup mutator
-    MUTATOR = egglib.simul.CoalesceFiniteAlleleMutator(theta=THETA,
-                                                       alleles=4,
-                                                       randomAncestralState=True)
-    MUTATOR.setSites(LOCUSLENGTH)
+    mutator = egglib.simul.CoalesceFiniteAlleleMutator(
+                    theta=theta,
+                    alleles=4,
+                    randomAncestralState=True)
+    mutator.setSites(locuslength)
 
     ## create log file and print to screen
-    createlog(PARAMS, TIPTAX)
+    #createlog(params, tiptax)
  
     ## open files to write seq data to
-    OUT1 = gzip.open(PARAMS["outname"]+"_R1_.fastq.gz", 'wb')
-    if PARAMS["datatype"] in ['pairddrad', 'pairgbs']:
-        OUT2 = gzip.open(PARAMS["outname"]+"_R2_.fastq.gz", 'wb')
+    out1 = gzip.open(params.outfile+"_R1_.fastq.gz", 'wb')
+    if 'pair' in params.datatype:
+        out2 = gzip.open(params.outfile+"_R2_.fastq.gz", 'wb')
 
     ## b/c single cutter will sequence fragment either way
-    if PARAMS["datatype"] in ['gbs']:
-        PARAMS["nLoci"] = PARAMS["nLoci"]/2   
+    if params.datatype == 'gbs':
+        params.nloci = params.nloci/2
 
     ## set stepsize for simulation depending on Nloci
-    if PARAMS["nLoci"] >= 100:
-        STEPSIZE = 100
-    elif PARAMS["nLoci"] >= 1000:
-        STEPSIZE = 500
-    elif PARAMS["nLoci"] >= 2000:
-        STEPSIZE = 1000
+    if params.nloci >= 100:
+        stepsize = 100
+    elif params.nloci >= 1000:
+        stepsize = 500
+    elif params.nloci >= 2000:
+        stepsize = 1000
     else:
-        STEPSIZE = 20
+        stepsize = 20
 
     ## simulate the data
-    BARCODES = {}
-    COUNTER = 0
-    while COUNTER < PARAMS["nLoci"]: 
-        ##  this is a problem if cut is too frequent
-        SEED1 = PARAMS["seed1"] * (COUNTER+1)
-        SEED2 = PARAMS["seed2"] * (COUNTER+1)
+    barcodes = {}
+    counter = 0
+    while counter < params.nloci: 
+        ##  this is a problem if cut is too frequent..
+        ## seed has to change each iteration in a known way
+        localseed1 = params.seed1 * (counter+1)
+        localseed2 = params.seed2 * (counter+1)        
 
         ## performs simulation of setpsize loci at a time"
-        ALIGNS = egglib.simul.coalesce(PARAMSET, MUTATOR, STEPSIZE,
-                                       random=(SEED1, SEED2))
+        aligns = egglib.simul.coalesce(
+                    paramset, mutator, stepsize,
+                    random=(localseed1, localseed2))
 
         ## creates barcodes if not made yet and fill D dict."
-        LOLDIC, BARCODES = barcoder(ALIGNS, PARAMS, TIPTAX, OUTGROUP, BARCODES)
+        loldic, barcodes = barcoder(aligns, params, tiptax, outgroup, barcodes)
 
         ## dresses up data to be fastq and puts in errors, indels, etc."
-        SEQS1, SEQS2, COUNTER = dressitup(LOLDIC,
-                                          BARCODES, 
-                                          PARAMS,
-                                          LOCUSLENGTH, 
-                                          COUNTER, 
-                                          STEPSIZE)
+        seqs1, seqs2, counter = dressitup(loldic, barcodes, params,
+                                          locuslength, counter, stepsize)
 
-        OUT1.write("".join(SEQS1))
-        if PARAMS["datatype"] in ['pairddrad', 'pairgbs']:
-            OUT2.write("".join(SEQS2))
+        out1.write("".join(seqs1))
+        if params["datatype"] in ['pairddrad', 'pairgbs']:
+            out2.write("".join(seqs2))
 
-    OUT1.close()
-    if PARAMS["datatype"] in ['pairddrad', 'pairgbs']:
-        OUT2.close()
-
-
-## The main script
-if __name__ == "__main__":
-    main()
+    out1.close()
+    if params["datatype"] in ['pairddrad', 'pairgbs']:
+        out2.close()
 
