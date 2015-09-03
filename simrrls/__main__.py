@@ -24,7 +24,8 @@ def parse():
   simrrls -o test1 -N 1e6 -n 4 -L 1000       
   simrrls -o test2 -f ddrad -c1 CCTGCAGG -c2 CCGG 
   simrrls -o test3 -f pairgbs -c1 CTGCAG -D 1 -i1 100 -i2 400 
-  simrrls -o test4 -t treefile -d 10,0
+  echo "((a:1,b:1):1,c:2);" > treefile 
+  simrrls -o test4 -t treefile -df norm -dm 5 -ds 1
         """)
 
     ## add arguments 
@@ -61,12 +62,12 @@ def parse():
         help="[int] N individuals from each taxon (default 1)")
 
     parser.add_argument('-N', metavar="Ne", dest="N", 
-        type=int, default=5e5, 
+        type=int, default=int(5e5), 
         help="[int] pop size (Ne for all lineages; default 5e5)")
 
     parser.add_argument('-o', metavar="outfile", dest='outfile', 
-        type=str, default="out.fastq.gz", 
-        help="[str] output file name prefix (default out)")
+        type=str, default="out", 
+        help="[str] output file name prefix (default 'out')")
 
     parser.add_argument('-t', metavar="tree", dest='tree', 
         type=str, default="",
@@ -76,6 +77,18 @@ def parse():
     parser.add_argument('-u', metavar="mu", dest='mu', 
         type=float, default=1e-9, 
         help="[float] per site mutation rate (default 1e-9)")
+
+    parser.add_argument('-df', metavar="depthfunc", dest="depthfunc",
+        type=str, default='norm', 
+        help="[str] model for sampling copies (default norm, other=exp)")
+
+    parser.add_argument('-dm', metavar="depthmean", dest="depthmean",
+        type=int, default=10, 
+        help="[int] mean sampled copies in norm, 1/m for exp (default 10)")
+
+    parser.add_argument('-ds', metavar="depthstd", dest="depthstd",
+        type=int, default=0, 
+        help="[int] stdev sampled copies, used with norm model (default 0)")
 
     parser.add_argument('-c1', metavar="cut_1", dest='cut1', 
         type=str, default='CTGCAG',
