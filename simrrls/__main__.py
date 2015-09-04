@@ -32,9 +32,13 @@ def parse():
     parser.add_argument('--version', action='version', 
         version=str(pkg_resources.get_distribution('simrrls')))
 
-    parser.add_argument('-D', metavar="dropout", dest="dropout",
-        type=bool, default=0, 
-        help="[0/1] allow allelic dropout (default 0)")
+    parser.add_argument('-mc', metavar="dropout", dest="dropout_cut",
+        type=int, default=0, 
+        help="[0/1] allelic dropout from mutation to cut sites (default 0)")
+
+    parser.add_argument('-ms', metavar="dropout", dest="dropout_seq",
+        type=int, default=0, 
+        help="[0/1] allelic dropout from new cut sites in seq (default 0)")
 
     parser.add_argument('-e', metavar="error", dest="error", 
         type=float, default=0.0005, 
@@ -46,14 +50,14 @@ def parse():
         (options: rad, gbs, ddrad, pairddrad, pairgbs)")
 
     parser.add_argument('-I', metavar="indels", dest="indels", 
-        type=bool, default=0, 
-        help="[0/1] allow indels (default 0)")
+        type=float, default=0, 
+        help="[float] rate of indel mutations (default 0) ex: 0.001")
 
     parser.add_argument('-l', metavar="length", dest='length', 
         type=int, default=100,
         help="[int] length of simulated sequences (default 100)")
 
-    parser.add_argument('-L', metavar="nLoci", dest="nloci", 
+    parser.add_argument('-L', metavar="nLoci", dest="nLoci", 
         type=int, default=100, 
         help="[int] number of loci to simulate (default 100)")
 
@@ -95,8 +99,8 @@ def parse():
         help="[str] restriction site 1 (default CTGCAG)")
 
     parser.add_argument('-c2', metavar="cut_2", dest='cut2', 
-        type=str, default='GAATTC',
-        help="[str] restriction site 1 (default GAATTC)")
+        type=str, default='CCGG',
+        help="[str] restriction site 1 (default CCGG)")
 
     parser.add_argument('-i1', metavar="min_insert", dest='min_insert', 
         type=int, default=100,

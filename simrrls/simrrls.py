@@ -68,8 +68,8 @@ def is_ultrametric(tree):
 
 def defaulttree(params):
     """ supply default tree """
-    tiptax = [i+j for i, j in zip(list("111122223333"),
-                                  list("ABCDEFGHIJKL"))]
+    tiptax = [i+j for i, j in zip(list("1111222233334"),
+                                  list("ABCDEFGHIJKLX"))]
 
     # """ simulate species with divergence times
     # newick = (((((A:2,B:2):2,C:4):4,D:8):4,
@@ -101,6 +101,8 @@ def defaulttree(params):
     paramset.populationFusion(node_abc, 8, 10)     ## K into I
     paramset.populationFusion(node_ab, 8, 9)       ## J into I
     ## together and outgroup"
+    paramset.populationFusion(node_abcdefghijkl, 0, 8)     ## I into A    
+    paramset.populationFusion(node_abcdefghijkl, 0, 8)     ## I into A
     paramset.populationFusion(node_abcdefghijkl, 0, 8)     ## I into A
     paramset.populationFusion(node_abcdefgh, 0, 4)         ## E into A
     return tiptax, paramset
@@ -163,16 +165,6 @@ def namer(aligns, params, tiptax):
     for align in aligns:
         for alobj, name in zip(align, names):
             alobj.name = name
-    
-    # ## make dictionary with list of loci for each sample
-    # loldic = {sname: [] for sname in set(names)}
-    # for samp in loldic:
-    #     for align in aligns:
-    #         loc = []
-    #         for seq in align:
-    #             if seq.name == samp:
-    #                 loc.append(seq.sequence)
-    #         loldic[samp].append(loc) 
     return aligns, names
 
 
@@ -220,46 +212,40 @@ def revcomp(seq):
 
 
 
-# def locus_dropout(datatype, ingroupseq, outgroupseq, cut1, cut2):
-#     """ check if cut site occurs in the sequence fragment with the 
-#     cut sites determined by data type """
-#     muts1 = [i for i, j in zip(ingroupseq[:len(cut1)], 
-#                               outgroupseq[:len(cut1)]) if i != j]
-#     muts2 = [i for i, j in zip(ingroupseq[-len(cut2):], 
-#                               outgroupseq[-len(cut2):]) if i != j]
-#     muts3 = [i for i, j in zip(ingroupseq[-len(cut1):], 
-#                               outgroupseq[-len(cut1):]) if i != j]
-#     if datatype == 'rad':
-#         drop1 = bool(any([i in ingroupseq for i in cut1, revcomp(cut1)]))
-#         drop2 = bool(muts1) 
-#         print drop1, drop2
-#         return any([drop1, drop2])
-#     if 'gbs' in datatype:
-#         drop1 = bool(any([i in ingroupseq for i in cut1, revcomp(cut1)]))
-#         drop2 = any([muts1, muts3])
-#         return any([drop1, drop2])
-#     if 'ddrad' in datatype:
-#         drop1 = bool(any([i in ingroupseq for i in cut1, revcomp(cut1),
-#                                              cut2, revcomp(cut2)])) 
-#         drop2 = any([muts1, muts2]) 
-#         return any([drop1, drop2])
+def mutation_new_cut(params, aligns):
+    """ check if cut site occurs in the sequence fragment with the 
+    cut sites determined by data type """
+    ## check if restriction site is in the sequence
+    keepgrp = []
 
+    for locus in range(len(aligns)):
+        outseq = aligns[locus].sequenceByName("OUT_0")
+        keeps = []
+        for haplo in range(len(aligns[locus])):
+            if "OUT_" not in aligns[locus][haplo][0]:
+                inseq = aligns[locus][haplo][1]
+                check = []
+                ## find occurrence of cut site
+                if 'ddrad' not in params.datatype:
+                    cutlist = [params.cut1, revcomp(params.cut1)]
+                else:
+                    cutlist = [params.cut1, revcomp(params.cut1),
+                               params.cut2, revcomp(params.cut2)]                    
+                    try: 
+                        hits = [inseq.index(i) for i in cutlist]
+                        ## check whether hits are changes relative to outgroup
+                        check = [inseq[hit:hit+len(params.cut1)] == \
+                                 outseq[hit:hit+len(params.cut1)] \
+                                 for hit in hits]
+                    except ValueError:
+                        pass
+                    if not any(check):
+                        keeps.append(aligns[locus][haplo])
+            else:
+                keeps.append(aligns[locus][haplo])
+        keepgrp.append(egglib.Align.create(keeps))
+    return keepgrp
 
-
-# def mutation_new_cut(aligns, dropcheck, params):
-#     """ check if cut site occurs in the sequence fragment with the 
-#     cut sites determined by data type """
-#     ## check if restriction site is in the sequence
-#     ingroupseq = ""
-#     if params.datatype in ['rad', 'gbs']:
-#         cutlist = [params.cut1, revcomp(params.cut1)]
-#         drop1 = bool(any([i in ingroupseq for i in cutlist]))
-#     else:
-#         cutlist = [params.cut1, revcomp(params.cut1), 
-#                    params.cut2, revcomp(params.cut2)]
-#         drop1 = bool(any([i in ingroupseq for i in cutlist]))
-
-#     return drop
 
 
 def mutation_in_cut(params, aligns, dropcheck):
@@ -277,15 +263,18 @@ def mutation_in_cut(params, aligns, dropcheck):
     for locus in range(len(dropcheck)):
         keeps = []
         for haplo in range(len(dropcheck[locus])):
-            check = dropcheck[locus][haplo][1][:lentocheck]
-            if len(set(check)) == 1:
+            if "OUT_" not in aligns[locus][haplo][0]:
+                check = dropcheck[locus][haplo][1][:lentocheck]
+                if len(set(check)) == 1:
+                    keeps.append(aligns[locus][haplo])
+            else:
                 keeps.append(aligns[locus][haplo])
         keepgrp.append(egglib.Align.create(keeps))
     return keepgrp
 
 
 
-def seq_copies(aligns, barcodes, params, locuslength, counter, stepsize):
+def seq_copies(aligns, barcodes, params, counter, stepsize):
     """ return a list of sequences all dressed up """
     seqs1 = []
     seqs2 = []
@@ -308,9 +297,9 @@ def seq_copies(aligns, barcodes, params, locuslength, counter, stepsize):
             if params.indels:
                 skip = 0
                 ## indel = prob. site is checked for indel-mut, skip 'skip' bp"
-                inds = np.random.binomial(locuslength-skip, params.indels)
+                inds = np.random.binomial(frag-skip, params.indels)
                 ## for each indel site randomly choose location on locus"
-                iwhere = np.random.randint(skip, locuslength, inds)
+                iwhere = np.random.randint(skip, frag, inds)
                 ## randomly select size of indel (default size 1)"
                 ilength = np.random.randint(1, 2, len(iwhere))
                 where = [iwhere, ilength]
@@ -319,17 +308,13 @@ def seq_copies(aligns, barcodes, params, locuslength, counter, stepsize):
             for samp in aligns[loc]:
                 tempseq = samp.sequence
 
-                ## introduce indel if mutation present at site
-                ## relative to the outgroup
+                ## introduce indel if mutation at site relative to outgroup
                 if params.indels:
                     outseq = aligns[loc].sequenceByName("OUT_0")
-                    nowlength = locuslength
                     for iloc, isize in zip(where[0], where[1]):
-                        difflength = locuslength-nowlength
-                        iloc -= difflength
-                        if tempseq[iloc] != outseq[iloc]:
-                            tempseq = tempseq[:iloc] + tempseq[iloc+isize:] 
-                            nowlength -= isize
+                        if all([len(i) >= iloc for i in [tempseq, outseq]]):
+                            if tempseq[iloc] != outseq[iloc]:
+                                tempseq = tempseq[:iloc] + tempseq[iloc+isize:] 
 
                 ## get copies
                 if params.depthfunc == 'norm':
@@ -340,26 +325,30 @@ def seq_copies(aligns, barcodes, params, locuslength, counter, stepsize):
                                         float(params.depthmean),
                                         float(params.depthstd))))
                 else:
+                    ## exponential function (coming soon)
                     pass
+
+                ## build dict
                 if samp.name in reads:
-                    reads[samp.name].append(tempseq*allele2copies)
+                    reads[samp.name] += [tempseq]*allele2copies
                 else:                    
                     reads[samp.name] = [tempseq]*allele1copies
 
                 ## introduce sequencing errors into copies
                 for copy in range(len(reads[samp.name])):
-                    errors = np.random.binomial(nowlength, params.error)
-                    errlocs = np.random.randint(0, nowlength, errors)
+                    coplen = len(reads[samp.name][copy])
+                    errors = np.random.binomial(coplen, params.error)
+                    errlocs = np.random.randint(0, coplen, errors)
                     for _ in errlocs:
                         ## also do final read size trim after mutate
                         reads[samp.name][copy] = mutate(reads[samp.name][copy])
                         ## shorten fragment to potentially overlapping length"
                         ## 0------->insert<-------[frag]
                         reads[samp.name][copy] = reads[samp.name][copy][:frag]
-
-            ## formats reads for the appropriate data type
-            seqs1, seqs2, counter = stacklist(params, reads, barcodes, 
-                                              counter, seqs1, seqs2)
+            if counter < params.nLoci:
+                ## formats reads for the appropriate data type
+                seqs1, seqs2, counter = stacklist(params, reads, barcodes, 
+                                                  counter, seqs1, seqs2)
         ## skipped
     return seqs1, seqs2, counter
 
@@ -376,95 +365,46 @@ def stacklist(params, reads, barcodes, counter, seqs1, seqs2):
     over1 = params.cut1[1:]
     over2 = params.cut2[1:]
 
-    for sample in reads:
-
-        ## embed seq data beween adapters and with barcodes
-        ## and restriction sites to look like raw data
-        if 'ddrad' in params.datatype:
-            thiscopy1 = ("A"*30)+illumina_p1+barcodes[samp]+over1+\
-                        "".join(thiscopy)+revcomp(over2)+illumina_p2+"A"*30
-        else:
-            thiscopy1 = ("A"*30)+illumina_p1+barcodes[samp]+over1+\
-                         "".join(thiscopy)+revcomp(over1)+illumina_p2+"A"*30
-
-        if 'gbs' in params["datatype"]: #  == 'gbs':
-            thiscopy2 = ("A"*30)+illumina_p1+barcodes[samp]+over1+\
-                        revcomp("".join(thiscopy))+revcomp(over1)+\
-                        illumina_p2+"A"*30
-
-    ## print out reminder of the read structure                    
-    # print " ".join(['1', thiscopy1[30:48],
-    #                      thiscopy1[48:54],
-    #                      thiscopy1[54:59],
-    #                      thiscopy1[59:66],                         
-    #                      '...',
-    #                      thiscopy1[-62:-55],                         
-    #                      thiscopy1[-55:-50],
-    #                      thiscopy1[-50:-28]])
-
-    # print " ".join(['2', thiscopy2[30:48],
-    #                      thiscopy2[48:54],
-    #                      thiscopy2[54:59],
-    #                      thiscopy2[59:66],                         
-    #                      '...',
-    #                      thiscopy2[-62:-55],                         
-    #                      thiscopy2[-55:-50],
-    #                      thiscopy2[-50:-28]])
-
-    if "4X" not in samp:
-        if counter <= params.nLoci:
-            ## always add to seqs1
-            ## sequence read1 from 5' end "
-            ## ----> start from primer
-            start = thiscopy1.index("CGATCT")+len("CGATCT")
-            sss = thiscopy1[start:start+params['length']]
-            seqs1.append("@lane1_locus"+str(counter)+"_"+\
-                         str(loldic.keys().index(samp))+"_R1_"+str(copy)+\
-                        " 1:N:0:"+"\n"+sss+"\n+\n"+("B"*len(sss))+"\n")
-
-            ## if gbs add fragment2 to the list of first reads
-            if 'gbs' in params["datatype"]:
-                ## sequence fragment from 3' end for GBS
-                start = thiscopy2.index("CGATCT")+len("CGATCT")
-                sss = thiscopy2[start:start+params["length"]]
-                seqs1.append("@lane1_clocus"+str(counter)+\
-                             "_"+str(loldic.keys().index(samp))+\
-                             "_R1_"+str(copy)+" 1:N:0:"+"\n"+\
+    for key, copies in reads.iteritems():
+        if "OUT_" not in key:
+            for copy in range(len(copies)):
+                ## embed seq data beween adapters and with barcodes
+                ## and restriction sites to look like raw data
+                if 'ddrad' in params.datatype:
+                    reads[key][copy] = ("A"*30)+illumina_p1+\
+                    barcodes[key]+over1+\
+                    copies[copy]+revcomp(over2)+illumina_p2+("A"*30)
+                else:
+                    reads[key][copy] = ("A"*30)+illumina_p1+\
+                    barcodes[key]+over1+\
+                    copies[copy]+revcomp(over1)+illumina_p2+("A"*30)
+                ## add reverse read direction for gbs
+                if 'gbs' in params.datatype:
+                    reads[key].append(("A"*30)+illumina_p1+\
+                    barcodes[key]+over1+\
+                    revcomp(copies[copy])+revcomp(over1)+illumina_p2+"A"*30)
+                ## sequence read1 from 5' end "
+                ## ----> start from primer
+                start = reads[key][copy].index("CGATCT")+len("CGATCT")
+                sss = reads[key][copy][start:start+params.length]
+                seqs1.append("@lane1_locus"+str(counter)+"_"+\
+                             key+"_R1_"+str(copy)+" 1:N:0:"+"\n"+\
                              sss+"\n+\n"+("B"*len(sss))+"\n")
 
-            ## sequence read2 from 3' end for paired read "
-            if 'pair' in params['datatype']:
-                start = thiscopy1.rindex("AGATCG")
-                ## <----
-                sss = thiscopy1[start-params['length']:start]
-                #sss = thiscopy1[-1*(start+params['length']):-start]
-                seqs2.append("@lane1_locus"+str(counter)+"_"+\
-                            str(loldic.keys().index(samp))+\
-                            "_R2_"+str(copy)+" 1:N:0:"+"\n"+\
-                            revcomp(sss)+"\n+\n"+("B"*len(sss))+"\n")
-
-            ## add both R1 and R2 to second reads
-            ## r2 was just added above, so here just add R1
-            if params["datatype"] == 'pairgbs':
-                ##  double check this 
-                ##  sequence read2 from 5' end for GBS"
-                #startleft = thiscopy2.index("CGATCT")
-                ## ---->
-                #here = startleft+len("CGATCT")
-                #sss = thiscopy2
-                #sss = thiscopy2[-1*(start+params['length']):-start]                
-                sss = thiscopy2[start-params['length']:start]                
-                #sss = thiscopy2[here:here+params['length']]
-                #if counter <= params["nLoci"]:
-                seqs2.append("@lane1_clocus"+str(counter)+"_"+\
-                            str(loldic.keys().index(samp))+\
-                            "_R2_"+str(copy)+" 1:N:0:"+"\n"+\
-                            revcomp(sss)+"\n+\n"+("B"*len(sss))+"\n")
+                ## sequence read2 from 3' end for paired read "
+                if 'pair' in params.datatype:
+                    start = reads[key][copy].rindex("AGATCG")
+                    ## <----
+                    sss = reads[key][copy][start-params.length:start]
+                    seqs2.append("@lane1_locus"+str(counter)+"_"+key+\
+                                "_R2_"+str(copy)+" 1:N:0:"+"\n"+\
+                                revcomp(sss)+"\n+\n"+("B"*len(sss))+"\n")
     return seqs1, seqs2, counter
 
 
 
 def run(params):
+    """ the main function for calling egglib, samplers and filters """
     ## get params
     tiptax, paramset = checkopts(params)
 
@@ -494,16 +434,16 @@ def run(params):
     if 'pair' in params.datatype:
         out2 = gzip.open(params.outfile+"_R2_.fastq.gz", 'wb')
 
-    ## b/c single cutter will sequence fragment either way
-    if 'gbs' in params.datatype:
-        params.nloci = params.nloci/2
+    ## b/c single cutter will sequence twice as many copies
+    #if 'gbs' in params.datatype:
+    #    params.nLoci = params.nLoci/2
 
     ## set stepsize for simulation depending on Nloci to make faster
-    if params.nloci >= 100:
+    if params.nLoci >= 100:
         stepsize = 100
-    elif params.nloci >= 1000:
+    elif params.nLoci >= 1000:
         stepsize = 500
-    elif params.nloci >= 2000:
+    elif params.nLoci >= 2000:
         stepsize = 1000
     else:
         stepsize = 20
@@ -511,7 +451,7 @@ def run(params):
     ## simulate the data
     barcodes = {}
     counter = 0
-    while counter < params.nloci: 
+    while counter < params.nLoci: 
         ##  this is a problem if cut is too frequent..
         ## seed has to change each iteration in a known way
         localseed1 = params.seed1 * (counter+1)
@@ -529,31 +469,27 @@ def run(params):
             barcodes = barcoder(names, params, barcodes)
 
         ## mutation-disruption (allelic dropout)
-        if params.dropout:
-            ## sim new data for dropout
+        if params.dropout_cut:
+            ## sim cut site length of data for dropout
             dropcheck = egglib.simul.coalesce(
                             paramset, dropmutator, stepsize,
                             random=(localseed1, localseed2))
             ## filter data dict based on dropcheck
             aligns = mutation_in_cut(params, aligns, dropcheck)
 
-            ## filter for generation of new cut sites by mutation
-            ## only applies if cut site was not present in the ancestor...
-            ## ... ignoring this type of mutation-disruption, for now...
-            #aligns = mutation_new_cut(params, aligns, dropcheck)
+        if params.dropout_seq:
+            ## filter for new cut sites generated by mutation
+            aligns = mutation_new_cut(params, aligns)
 
-        #for i, j in zip(dropcheck, aligns):
-        #    for l, m in zip(i, j):
-        #        print l, m
         ## dresses up data to be fastq and puts in errors, indels, etc
-        seqs1, seqs2, counter = seq_copies(aligns, barcodes, params,
-                                           locuslength, counter, stepsize)
+        seqs1, seqs2, counter = seq_copies(aligns, barcodes, params, counter, stepsize)
+                                           
 
         out1.write("".join(seqs1))
-        if params["datatype"] in ['pairddrad', 'pairgbs']:
+        if 'pair' in params.datatype:
             out2.write("".join(seqs2))
 
     out1.close()
-    if params["datatype"] in ['pairddrad', 'pairgbs']:
+    if "pair" in params.datatype:
         out2.close()
 
