@@ -8,10 +8,10 @@ A program to simulate raw radseq-like sequence data with options to modify tree,
 + Egglib python module
 
 #### Installation
-(1) Install the Egglib Python module
-(2) Download simrrls
-(3) cd into simrrls/ directory
-(4) run `pip install .`
+1. Install the Egglib Python module  
+2. Download simrrls  
+3. cd into simrrls/ directory  
+4. run `pip install .`   
 
 ### Example usage: 
 
