@@ -11,6 +11,8 @@ import pkg_resources
 def main():
     """ parse args and run simrrls """
     params = parse()
+    print(params)
+    ## run simrrls
     run(params)
 
 
@@ -31,6 +33,10 @@ def parse():
     ## add arguments 
     parser.add_argument('--version', action='version', 
         version=str(pkg_resources.get_distribution('simrrls')))
+
+    parser.add_argument('-o', metavar="outname", dest='outname', 
+        type=str, default=None, required=True,
+        help="[str] output file name prefix (default 'out')")
 
     parser.add_argument('-mc', metavar="dropout", dest="dropout_cut",
         type=int, default=0, 
@@ -68,10 +74,6 @@ def parse():
     parser.add_argument('-N', metavar="Ne", dest="N", 
         type=int, default=int(5e5), 
         help="[int] pop size (Ne for all lineages; default 5e5)")
-
-    parser.add_argument('-o', metavar="outfile", dest='outfile', 
-        type=str, default="out", 
-        help="[str] output file name prefix (default 'out')")
 
     parser.add_argument('-t', metavar="tree", dest='tree', 
         type=str, default="",

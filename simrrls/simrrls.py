@@ -68,8 +68,8 @@ def is_ultrametric(tree):
 
 def defaulttree(params):
     """ supply default tree """
-    tiptax = [i+j for i, j in zip(list("1111222233334"),
-                                  list("ABCDEFGHIJKLX"))]
+    tiptax = [i+j for i, j in zip(list("111122223333")+["OUT"],
+                                  list("ABCDEFGHIJKL")+[""])]
 
     # """ simulate species with divergence times
     # newick = (((((A:2,B:2):2,C:4):4,D:8):4,
@@ -101,7 +101,7 @@ def defaulttree(params):
     paramset.populationFusion(node_abc, 8, 10)     ## K into I
     paramset.populationFusion(node_ab, 8, 9)       ## J into I
     ## together and outgroup"
-    paramset.populationFusion(node_abcdefghijkl, 0, 8)     ## I into A    
+    paramset.populationFusion(node_abcdefghijkl, 0, 12)     ## X into A    
     paramset.populationFusion(node_abcdefghijkl, 0, 8)     ## I into A
     paramset.populationFusion(node_abcdefghijkl, 0, 8)     ## I into A
     paramset.populationFusion(node_abcdefgh, 0, 4)         ## E into A
@@ -185,7 +185,7 @@ def barcoder(names, params, barcodes):
                 if not any([i in bcd for i in [over1, over2]]):
                     barcodes[name] = bcd
     ## creates random barcodes and writes map to file "
-    with open(params.outfile+"_barcodes.txt", 'w') as barout:
+    with open(params.outname+"_barcodes.txt", 'w') as barout:
         bnames = list(barcodes)
         bnames.sort()
         for bcd in bnames:
@@ -339,12 +339,15 @@ def seq_copies(aligns, barcodes, params, counter, stepsize):
                     coplen = len(reads[samp.name][copy])
                     errors = np.random.binomial(coplen, params.error)
                     errlocs = np.random.randint(0, coplen, errors)
-                    for _ in errlocs:
+                    for err in errlocs:
                         ## also do final read size trim after mutate
-                        reads[samp.name][copy] = mutate(reads[samp.name][copy])
-                        ## shorten fragment to potentially overlapping length"
-                        ## 0------->insert<-------[frag]
-                        reads[samp.name][copy] = reads[samp.name][copy][:frag]
+                        tochange = list(reads[samp.name][copy])
+                        tochange[err] = mutate(tochange[err])
+                        reads[samp.name][copy] = "".join(tochange)
+                    ## shorten fragment to potentially overlapping length"
+                    ## 0------->insert<-------[frag]
+                    reads[samp.name][copy] = reads[samp.name][copy][:frag]
+
             if counter < params.nLoci:
                 ## formats reads for the appropriate data type
                 seqs1, seqs2, counter = stacklist(params, reads, barcodes, 
@@ -383,6 +386,7 @@ def stacklist(params, reads, barcodes, counter, seqs1, seqs2):
                     reads[key].append(("A"*30)+illumina_p1+\
                     barcodes[key]+over1+\
                     revcomp(copies[copy])+revcomp(over1)+illumina_p2+"A"*30)
+
                 ## sequence read1 from 5' end "
                 ## ----> start from primer
                 start = reads[key][copy].index("CGATCT")+len("CGATCT")
@@ -430,9 +434,9 @@ def run(params):
     dropmutator.setSites(locuslength)   #(len(params.cut1)+len(params.cut2))
 
     ## open files to write seq data to
-    out1 = gzip.open(params.outfile+"_R1_.fastq.gz", 'wb')
+    out1 = gzip.open(params.outname+"_R1_.fastq.gz", 'wb')
     if 'pair' in params.datatype:
-        out2 = gzip.open(params.outfile+"_R2_.fastq.gz", 'wb')
+        out2 = gzip.open(params.outname+"_R2_.fastq.gz", 'wb')
 
     ## b/c single cutter will sequence twice as many copies
     #if 'gbs' in params.datatype:
@@ -482,7 +486,8 @@ def run(params):
             aligns = mutation_new_cut(params, aligns)
 
         ## dresses up data to be fastq and puts in errors, indels, etc
-        seqs1, seqs2, counter = seq_copies(aligns, barcodes, params, counter, stepsize)
+        seqs1, seqs2, counter = seq_copies(aligns, barcodes, params, 
+                                           counter, stepsize)
                                            
 
         out1.write("".join(seqs1))
