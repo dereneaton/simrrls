@@ -7,7 +7,7 @@ Requirements
 ------------
 + Python 2.7+
 + Numpy Python module
-+ `<Egglib Python module <http://egglib.sourceforge.net/>`_
++ `Egglib Python module <http://egglib.sourceforge.net/>`_
 
 Example usage: 
 ---------------
@@ -29,9 +29,14 @@ More modifications related to library prep methods
 
     $ simrrls -o test4 -d 10,2 -f pairddrad -s -50,200 
 
-Examples of using a non-default input topology::
+Examples of using a non-default input topology
+
+.. code:: bash  
+
     $ echo "((a:1,b:1):1,c:2);" > treefile  
     $ simrrls -o test4 -d 10,2 -f pairddrad -s -50,200 -t treefile  
+
+
 
 
 
