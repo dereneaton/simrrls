@@ -189,7 +189,8 @@ def barcoder(names, params, barcodes):
         bnames = list(barcodes)
         bnames.sort()
         for bcd in bnames:
-            print >>barout, "\t".join([bcd, barcodes[bcd]])
+            if "OUT_0" not in bcd:
+                print >>barout, "\t".join([bcd, barcodes[bcd]])
     return barcodes
 
 
@@ -348,7 +349,7 @@ def seq_copies(aligns, barcodes, params, counter, stepsize):
                     ## 0------->insert<-------[frag]
                     reads[samp.name][copy] = reads[samp.name][copy][:frag]
 
-            if counter < params.nLoci:
+            if counter <= params.nLoci:
                 ## formats reads for the appropriate data type
                 seqs1, seqs2, counter = stacklist(params, reads, barcodes, 
                                                   counter, seqs1, seqs2)
@@ -455,7 +456,7 @@ def run(params):
     ## simulate the data
     barcodes = {}
     counter = 0
-    while counter < params.nLoci: 
+    while counter <= params.nLoci: 
         ##  this is a problem if cut is too frequent..
         ## seed has to change each iteration in a known way
         localseed1 = params.seed1 * (counter+1)
@@ -488,7 +489,6 @@ def run(params):
         ## dresses up data to be fastq and puts in errors, indels, etc
         seqs1, seqs2, counter = seq_copies(aligns, barcodes, params, 
                                            counter, stepsize)
-                                           
 
         out1.write("".join(seqs1))
         if 'pair' in params.datatype:
