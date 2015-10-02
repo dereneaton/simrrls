@@ -73,7 +73,7 @@ def parse():
         help="[int] N individuals from each taxon (default 1)")
 
     parser.add_argument('-N', metavar="Ne", dest="N", 
-        type=int, default=int(5e5), 
+        type=float, default=int(5e5), 
         help="[int] pop size (Ne for all lineages; default 5e5)")
 
     parser.add_argument('-t', metavar="tree", dest='tree', 
