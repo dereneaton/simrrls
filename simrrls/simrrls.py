@@ -154,7 +154,7 @@ def namer(aligns, params, tiptax):
     """ takes an align object and puts names to sequences and
     makes a barcode map if not already made"""
 
-    ## append names for N individuals
+    ## append names for N individuals if >1
     names = []
     for name in tiptax:
         for i in range(params.Ninds):
@@ -189,7 +189,11 @@ def barcoder(names, params, barcodes):
         bnames = list(barcodes)
         bnames.sort()
         for bcd in bnames:
+<<<<<<< HEAD
             if "OUT_0" not in bcd:
+=======
+            if "OUT_" not in bcd:
+>>>>>>> 16fd5ffee64001b3d36729fdc1a9386611f13623
                 print >>barout, "\t".join([bcd, barcodes[bcd]])
     return barcodes
 

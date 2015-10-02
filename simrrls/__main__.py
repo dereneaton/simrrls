@@ -1,4 +1,5 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python2
+
 """ the main CLI for simrrls """
 
 from __future__ import print_function, division ## requires python 2.7
@@ -11,7 +12,7 @@ import pkg_resources
 def main():
     """ parse args and run simrrls """
     params = parse()
-    print(params)
+    #print(params)
     ## run simrrls
     run(params)
 

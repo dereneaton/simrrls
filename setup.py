@@ -8,11 +8,11 @@ requirements = [
     ]
 
 ## loads __version__
-exec(open('simrrls/version.py').read())
+#exec(open('simrrls/version.py').read())
 
 setup(
     name="simrrls",
-    version=__version__,
+    version=simrrls.__version__,
     url="https://github.com/dereneaton/simrrls",
 
     author=simrrls.__author__,
