@@ -189,11 +189,7 @@ def barcoder(names, params, barcodes):
         bnames = list(barcodes)
         bnames.sort()
         for bcd in bnames:
-<<<<<<< HEAD
-            if "OUT_0" not in bcd:
-=======
             if "OUT_" not in bcd:
->>>>>>> 16fd5ffee64001b3d36729fdc1a9386611f13623
                 print >>barout, "\t".join([bcd, barcodes[bcd]])
     return barcodes
 
@@ -419,7 +415,7 @@ def run(params):
 
     ## all data are simulated at the max fragment size of window
     locuslength = params.min_insert+(2*params.length)
-    theta = 4.*params.N*params.mu*locuslength
+    theta = 4.*int(params.N)*params.mu*locuslength
     print "\n\tTHETA={}".format(theta/locuslength)
 
     ## initialize random number sampling for numpy
