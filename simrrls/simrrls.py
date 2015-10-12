@@ -221,34 +221,41 @@ def mutation_new_cut(params, aligns):
     """ check if cut site occurs in the sequence fragment with the 
     cut sites determined by data type """
     ## check if restriction site is in the sequence
-    keepgrp = []
+    if 'ddrad' not in params.datatype:
+        cutlist = [params.cut1, revcomp(params.cut1)]
+    else:
+        cutlist = [params.cut1, revcomp(params.cut1),
+                   params.cut2, revcomp(params.cut2)]                    
 
+    keepgrp = []
     for locus in range(len(aligns)):
+        ## get the outgroup seq at this locus
         outseq = aligns[locus].sequenceByName("OUT_0")
         keeps = []
+        ## iterate over ingroup samples
         for haplo in range(len(aligns[locus])):
             if "OUT_" not in aligns[locus][haplo][0]:
+                ## get this ingroup seq
                 inseq = aligns[locus][haplo][1]
                 check = []
-                ## find occurrence of cut site
-                if 'ddrad' not in params.datatype:
-                    cutlist = [params.cut1, revcomp(params.cut1)]
-                else:
-                    cutlist = [params.cut1, revcomp(params.cut1),
-                               params.cut2, revcomp(params.cut2)]                    
                 try: 
+                    ## find occurrence of cut site                    
                     hits = [inseq.index(i) for i in cutlist]
                     ## check whether hits are changes relative to outgroup
                     check = [inseq[hit:hit+len(params.cut1)] == \
                              outseq[hit:hit+len(params.cut1)] \
                              for hit in hits]
                 except ValueError:
+                    ## no hits found
                     pass
                 if not any(check):
                     keeps.append(aligns[locus][haplo])
-            else:
-                keeps.append(aligns[locus][haplo])
-        keepgrp.append(egglib.Align.create(keeps))
+            #else:
+            #    keeps.append(aligns[locus][haplo])
+        if keeps:
+            keepgrp.append(egglib.Align.create(keeps))
+        else:
+            keepgrp.append([])
     return keepgrp
 
 
@@ -295,7 +302,8 @@ def seq_copies(aligns, barcodes, params, counter, stepsize):
         frag = (2*params.length)+insert
 
         ## make sure all reads did not get disrupted
-        if aligns:
+        if aligns[loc]:
+            #print aligns[loc], "ALIGNS"
             counter += 1    
             
             ## make indels, sample copies and introduce seq errors
@@ -496,7 +504,7 @@ def run(params):
         ## dresses up data to be fastq and puts in errors, indels, etc
         seqs1, seqs2, counter = seq_copies(aligns, barcodes, params, 
                                            counter, stepsize)
-
+        print counter, "COUNT"
         out1.write("".join(seqs1))
         if 'pair' in params.datatype:
             out2.write("".join(seqs2))
