@@ -279,11 +279,8 @@ def mutation_in_cut(params, aligns, dropcheck):
         for haplo in range(len(dropcheck[locus])):
             if "OUT_" not in aligns[locus][haplo][0]:
                 check = dropcheck[locus][haplo][1][:lentocheck]
-                print check, "CHe"
                 if len(set(check)) == 1:
                     keeps.append(aligns[locus][haplo])
-                else:
-                    print "NO"
             else:
                 ## always keep the outgroup b/c needed for other mut
                 outg.append(aligns[locus][haplo])
@@ -291,7 +288,6 @@ def mutation_in_cut(params, aligns, dropcheck):
             keepgrp.append(egglib.Align.create(keeps+outg))
         else:
             keepgrp.append([])
-        print [len(i) for i in keepgrp]
     return keepgrp
 
 
