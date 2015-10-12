@@ -229,33 +229,34 @@ def mutation_new_cut(params, aligns):
 
     keepgrp = []
     for locus in range(len(aligns)):
-        ## get the outgroup seq at this locus
-        outseq = aligns[locus].sequenceByName("OUT_0")
-        keeps = []
-        ## iterate over ingroup samples
-        for haplo in range(len(aligns[locus])):
-            if "OUT_" not in aligns[locus][haplo][0]:
-                ## get this ingroup seq
-                inseq = aligns[locus][haplo][1]
-                check = []
-                try: 
-                    ## find occurrence of cut site                    
-                    hits = [inseq.index(i) for i in cutlist]
-                    ## check whether hits are changes relative to outgroup
-                    check = [inseq[hit:hit+len(params.cut1)] == \
-                             outseq[hit:hit+len(params.cut1)] \
-                             for hit in hits]
-                except ValueError:
-                    ## no hits found
-                    pass
-                if not any(check):
-                    keeps.append(aligns[locus][haplo])
-            #else:
-            #    keeps.append(aligns[locus][haplo])
-        if keeps:
-            keepgrp.append(egglib.Align.create(keeps))
-        else:
-            keepgrp.append([])
+        if aligns[locus]:
+            ## get the outgroup seq at this locus
+            outseq = aligns[locus].sequenceByName("OUT_0")
+            keeps = []
+            ## iterate over ingroup samples
+            for haplo in range(len(aligns[locus])):
+                if "OUT_" not in aligns[locus][haplo][0]:
+                    ## get this ingroup seq
+                    inseq = aligns[locus][haplo][1]
+                    check = []
+                    try: 
+                        ## find occurrence of cut site                    
+                        hits = [inseq.index(i) for i in cutlist]
+                        ## check whether hits are changes relative to outgroup
+                        check = [inseq[hit:hit+len(params.cut1)] == \
+                                 outseq[hit:hit+len(params.cut1)] \
+                                 for hit in hits]
+                    except ValueError:
+                        ## no hits found
+                        pass
+                    if not any(check):
+                        keeps.append(aligns[locus][haplo])
+                #else:
+                #    keeps.append(aligns[locus][haplo])
+            if keeps:
+                keepgrp.append(egglib.Align.create(keeps))
+            else:
+                keepgrp.append([])
     return keepgrp
 
 
@@ -281,7 +282,10 @@ def mutation_in_cut(params, aligns, dropcheck):
                     keeps.append(aligns[locus][haplo])
             else:
                 keeps.append(aligns[locus][haplo])
-        keepgrp.append(egglib.Align.create(keeps))
+        if keeps:
+            keepgrp.append(egglib.Align.create(keeps))
+        else:
+            keepgrp.append([])
     return keepgrp
 
 
@@ -304,7 +308,6 @@ def seq_copies(aligns, barcodes, params, counter, stepsize):
         ## make sure all reads did not get disrupted
         if aligns[loc]:
             #print aligns[loc], "ALIGNS"
-            counter += 1    
             
             ## make indels, sample copies and introduce seq errors
             if params.indels:
@@ -362,6 +365,7 @@ def seq_copies(aligns, barcodes, params, counter, stepsize):
                     reads[samp.name][copy] = reads[samp.name][copy][:frag]
 
             if counter <= params.nLoci:
+                counter += 1    
                 ## formats reads for the appropriate data type
                 seqs1, seqs2, counter = stacklist(params, reads, barcodes, 
                                                   counter, seqs1, seqs2)
