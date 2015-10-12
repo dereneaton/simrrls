@@ -36,7 +36,7 @@ def parse():
         version=str(pkg_resources.get_distribution('simrrls')))
 
     parser.add_argument('-o', metavar="outname", dest='outname', 
-        type=str, default=None, required=True,
+        type=str, default=None, 
         help="[str] output file name prefix (default 'out')")
 
     parser.add_argument('-mc', metavar="dropout", dest="dropout_cut",

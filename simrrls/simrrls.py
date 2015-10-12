@@ -185,7 +185,11 @@ def barcoder(names, params, barcodes):
                 if not any([i in bcd for i in [over1, over2]]):
                     barcodes[name] = bcd
     ## creates random barcodes and writes map to file "
-    with open(params.outname+"_barcodes.txt", 'w') as barout:
+    if params.outname:
+        outname = params.outname+"_barcodes.txt"
+    else:
+        outname = "out_barcodes.txt"
+    with open(outname, 'w') as barout:
         bnames = list(barcodes)
         bnames.sort()
         for bcd in bnames:
@@ -232,16 +236,16 @@ def mutation_new_cut(params, aligns):
                 else:
                     cutlist = [params.cut1, revcomp(params.cut1),
                                params.cut2, revcomp(params.cut2)]                    
-                    try: 
-                        hits = [inseq.index(i) for i in cutlist]
-                        ## check whether hits are changes relative to outgroup
-                        check = [inseq[hit:hit+len(params.cut1)] == \
-                                 outseq[hit:hit+len(params.cut1)] \
-                                 for hit in hits]
-                    except ValueError:
-                        pass
-                    if not any(check):
-                        keeps.append(aligns[locus][haplo])
+                try: 
+                    hits = [inseq.index(i) for i in cutlist]
+                    ## check whether hits are changes relative to outgroup
+                    check = [inseq[hit:hit+len(params.cut1)] == \
+                             outseq[hit:hit+len(params.cut1)] \
+                             for hit in hits]
+                except ValueError:
+                    pass
+                if not any(check):
+                    keeps.append(aligns[locus][haplo])
             else:
                 keeps.append(aligns[locus][haplo])
         keepgrp.append(egglib.Align.create(keeps))
@@ -435,9 +439,12 @@ def run(params):
     dropmutator.setSites(locuslength)   #(len(params.cut1)+len(params.cut2))
 
     ## open files to write seq data to
-    out1 = gzip.open(params.outname+"_R1_.fastq.gz", 'wb')
-    if 'pair' in params.datatype:
-        out2 = gzip.open(params.outname+"_R2_.fastq.gz", 'wb')
+    if params.outname:
+        out1 = gzip.open(params.outname+"_R1_.fastq.gz", 'wb')
+        if 'pair' in params.datatype:
+            out2 = gzip.open(params.outname+"_R2_.fastq.gz", 'wb')
+    else:
+        out1 = out2 = sys.stderr
 
     ## b/c single cutter will sequence twice as many copies
     #if 'gbs' in params.datatype:
