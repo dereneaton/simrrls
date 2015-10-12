@@ -302,13 +302,13 @@ def seq_copies(aligns, barcodes, params, counter, stepsize):
         params.depthstd = 1e-9
 
     ## iterate over each locus 
-    for loc in xrange(stepsize):
+    for loc in aligns:
         ## sample fragment in uniform size window for this locus
         insert = np.random.randint(params.min_insert, params.max_insert)
         frag = (2*params.length)+insert
 
         ## make sure all reads did not get disrupted
-        if aligns[loc]:
+        if loc:
             #print aligns[loc], "ALIGNS"
             
             ## make indels, sample copies and introduce seq errors
@@ -323,12 +323,12 @@ def seq_copies(aligns, barcodes, params, counter, stepsize):
                 where = [iwhere, ilength]
 
             reads = {}
-            for samp in aligns[loc]:
+            for samp in loc:
                 tempseq = samp.sequence
 
                 ## introduce indel if mutation at site relative to outgroup
                 if params.indels:
-                    outseq = aligns[loc].sequenceByName("OUT_0")
+                    outseq = loc.sequenceByName("OUT_0")
                     for iloc, isize in zip(where[0], where[1]):
                         if all([len(i) >= iloc for i in [tempseq, outseq]]):
                             if tempseq[iloc] != outseq[iloc]:
@@ -510,7 +510,7 @@ def run(params):
         ## dresses up data to be fastq and puts in errors, indels, etc
         seqs1, seqs2, counter = seq_copies(aligns, barcodes, params, 
                                            counter, stepsize)
-        print "{}/{}".format(counter, stepsize)
+        #print counter-1, "Count"
         out1.write("".join(seqs1))
         if 'pair' in params.datatype:
             out2.write("".join(seqs2))
