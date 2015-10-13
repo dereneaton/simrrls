@@ -241,18 +241,24 @@ def mutation_new_cut(params, aligns):
                     check1 = []
                     check2 = []
                     try: 
-                        ## find occurrence of cut site                    
-                        hits1 = [inseq.index(i) for i in cutlist1]
+                        ## find occurrence of cut site
+                        hits1 = []
+                        for cut in cutlist1:
+                            if cut in inseq:
+                                hits1.append(inseq.index(cut))
                         ## check whether hits are changes relative to outgroup
                         check1 = [inseq[hit:hit+len(params.cut1)] == \
                                  outseq[hit:hit+len(params.cut1)] \
                                  for hit in hits1]
                         if 'ddrad' in params.datatype:
-                            hits2 = [inseq.index(i) for i in cutlist2]
-                            ## check hits relative to outgroup
-                            check2 = [inseq[hit:hit+len(params.cut1)] == \
-                                      outseq[hit:hit+len(params.cut1)] \
-                                      for hit in hits2]
+                            hits2 = []
+                            for cut in cutlist2:
+                                if cut in inseq:
+                                    hits2.append(inseq.index(cut))
+                            ## check whether hits are  relative to outgroup
+                            check2 = [inseq[hit:hit+len(params.cut2)] == \
+                                     outseq[hit:hit+len(params.cut2)] \
+                                     for hit in hits2]
                     except ValueError:
                         ## no hits found
                         pass
@@ -441,7 +447,7 @@ def run(params):
     ## all data are simulated at the max fragment size of window
     locuslength = params.min_insert+(2*params.length)
     theta = 4.*int(params.N)*params.mu*locuslength
-    print "\n\tTHETA={}".format(theta/locuslength)
+    #print "\n\tTHETA={}".format(theta/locuslength)
 
     ## initialize random number sampling for numpy
     np.random.seed(params.seed1)
@@ -517,7 +523,7 @@ def run(params):
         ## dresses up data to be fastq and puts in errors, indels, etc
         seqs1, seqs2, counter = seq_copies(aligns, barcodes, params, 
                                            counter, stepsize)
-        #print counter-1, "Count"
+        print counter-1, "Count"
         out1.write("".join(seqs1))
         if 'pair' in params.datatype:
             out2.write("".join(seqs2))
