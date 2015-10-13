@@ -240,29 +240,25 @@ def mutation_new_cut(params, aligns):
                     inseq = aligns[locus][haplo][1]
                     check1 = []
                     check2 = []
-                    try: 
-                        ## find occurrence of cut site
-                        hits1 = []
-                        for cut in cutlist1:
+                    ## find occurrence of cut site
+                    hits1 = []
+                    for cut in cutlist1:
+                        if cut in inseq:
+                            hits1.append(inseq.index(cut))
+                    ## check whether hits are changes relative to outgroup
+                    check1 = [inseq[hit:hit+len(params.cut1)] == \
+                             outseq[hit:hit+len(params.cut1)] \
+                             for hit in hits1]
+                    if 'ddrad' in params.datatype:
+                        hits2 = []
+                        for cut in cutlist2:
                             if cut in inseq:
-                                hits1.append(inseq.index(cut))
-                        ## check whether hits are changes relative to outgroup
-                        check1 = [inseq[hit:hit+len(params.cut1)] == \
-                                 outseq[hit:hit+len(params.cut1)] \
-                                 for hit in hits1]
-                        if 'ddrad' in params.datatype:
-                            hits2 = []
-                            for cut in cutlist2:
-                                if cut in inseq:
-                                    hits2.append(inseq.index(cut))
-                            ## check whether hits are  relative to outgroup
-                            check2 = [inseq[hit:hit+len(params.cut2)] == \
-                                     outseq[hit:hit+len(params.cut2)] \
-                                     for hit in hits2]
-                    except ValueError:
-                        ## no hits found
-                        pass
-                    if not any(check1) or any(check2):
+                                hits2.append(inseq.index(cut))
+                        ## check whether hits are  relative to outgroup
+                        check2 = [inseq[hit:hit+len(params.cut2)] == \
+                                 outseq[hit:hit+len(params.cut2)] \
+                                 for hit in hits2]
+                    if not (any(check1) or any(check2)):
                         keeps.append(aligns[locus][haplo])
                 #else:
                 #    keeps.append(aligns[locus][haplo])
