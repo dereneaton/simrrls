@@ -221,11 +221,11 @@ def mutation_new_cut(params, aligns):
     """ check if cut site occurs in the sequence fragment with the 
     cut sites determined by data type """
     ## check if restriction site is in the sequence
-    if 'ddrad' not in params.datatype:
-        cutlist1 = [params.cut1, revcomp(params.cut1)]
-    else:
+    if 'ddrad' in params.datatype:
         cutlist1 = [params.cut1, revcomp(params.cut1)]
         cutlist2 = [params.cut2, revcomp(params.cut2)]                    
+    else:
+        cutlist1 = [params.cut1, revcomp(params.cut1)]
 
     keepgrp = []
     for locus in range(len(aligns)):
@@ -519,7 +519,7 @@ def run(params):
         ## dresses up data to be fastq and puts in errors, indels, etc
         seqs1, seqs2, counter = seq_copies(aligns, barcodes, params, 
                                            counter, stepsize)
-        print counter-1, "Count"
+        #print counter-1, "Count"
         out1.write("".join(seqs1))
         if 'pair' in params.datatype:
             out2.write("".join(seqs2))
