@@ -222,10 +222,10 @@ def mutation_new_cut(params, aligns):
     cut sites determined by data type """
     ## check if restriction site is in the sequence
     if 'ddrad' not in params.datatype:
-        cutlist = [params.cut1, revcomp(params.cut1)]
+        cutlist1 = [params.cut1, revcomp(params.cut1)]
     else:
-        cutlist = [params.cut1, revcomp(params.cut1),
-                   params.cut2, revcomp(params.cut2)]                    
+        cutlist1 = [params.cut1, revcomp(params.cut1)]
+        cutlist2 = [params.cut2, revcomp(params.cut2)]                    
 
     keepgrp = []
     for locus in range(len(aligns)):
@@ -238,18 +238,25 @@ def mutation_new_cut(params, aligns):
                 if "OUT_" not in aligns[locus][haplo][0]:
                     ## get this ingroup seq
                     inseq = aligns[locus][haplo][1]
-                    check = []
+                    check1 = []
+                    check2 = []
                     try: 
                         ## find occurrence of cut site                    
-                        hits = [inseq.index(i) for i in cutlist]
+                        hits1 = [inseq.index(i) for i in cutlist1]
                         ## check whether hits are changes relative to outgroup
-                        check = [inseq[hit:hit+len(params.cut1)] == \
+                        check1 = [inseq[hit:hit+len(params.cut1)] == \
                                  outseq[hit:hit+len(params.cut1)] \
-                                 for hit in hits]
+                                 for hit in hits1]
+                        if 'ddrad' in params.datatype:
+                            hits2 = [inseq.index(i) for i in cutlist2]
+                            ## check hits relative to outgroup
+                            check2 = [inseq[hit:hit+len(params.cut1)] == \
+                                      outseq[hit:hit+len(params.cut1)] \
+                                      for hit in hits2]
                     except ValueError:
                         ## no hits found
                         pass
-                    if not any(check):
+                    if not any(check1) or any(check2):
                         keeps.append(aligns[locus][haplo])
                 #else:
                 #    keeps.append(aligns[locus][haplo])
