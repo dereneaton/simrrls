@@ -4,4 +4,4 @@ from . import simrrls
 
 __author__ = "Deren Eaton"
 __contact__ = "deren.eaton@yale.edu"
-__version__ = '0.0.8'
+__version__ = '0.0.9'
