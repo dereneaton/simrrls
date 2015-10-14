@@ -221,15 +221,18 @@ def mutation_new_cut(params, aligns, dropcheck):
     """ check if cut site occurs in the sequence fragment with the 
     cut sites determined by data type """
     ## check if restriction site is in the sequence
-    if 'ddrad' in params.datatype:
-        cutlist1 = [params.cut1, revcomp(params.cut1)]
-        cutlist2 = [params.cut2, revcomp(params.cut2)]                    
-    else:
-        cutlist1 = [params.cut1, revcomp(params.cut1)]
+    cutlist1 = [params.cut1, revcomp(params.cut1)]
+    cutlist2 = [params.cut2, revcomp(params.cut2)]                    
 
-    ttt = 0
+    tt1 = 0
+    tt2 = 0
     keepgrp = []
     for locus in range(len(aligns)):
+        ## get size for this locus
+        insert = np.random.randint(params.min_insert, 
+                                   params.max_insert)
+        frag = (2*params.length)+insert
+
         if aligns[locus]:
             ## get the outgroup seq at this locus
             #outseq = aligns[locus].sequenceByName("OUT_0")
@@ -239,49 +242,52 @@ def mutation_new_cut(params, aligns, dropcheck):
                 if "OUT_" not in aligns[locus][haplo][0]:
                     ## get this ingroup seq
                     inseq = aligns[locus][haplo][1]
+                    drop = dropcheck[locus][haplo][1]
                     hits1 = 0
                     hits2 = 0
                     ## find occurrence of cut site
                     if any([cut in inseq for cut in cutlist1]):
-                        check1 = dropcheck[locus][haplo][1][:len(params.cut1)]
-                        if len(set(check1)) == 1:
-                            hits1 = 1
+                        check1 = drop[20:20+len(params.cut1)]
+                        ## if mutation occurred to give rise to this cut site
+                        if len(set(check1)) > 1:
+                            ## if new frag is less than min frag length
+                            where = np.array([inseq.find(cut) for cut \
+                                                           in cutlist1])
+                            if any(where > 0):
+                                #print where, '1'
+                                cutfrag = where[where > 0].min()
+                                if frag-cutfrag < len(inseq):
+                                    #print cut, frag, cutfrag, len(inseq)
+                                    hits1 = 1
 
-                            #hits1.append(inseq.index(cut))
-                    ## check whether mutations occurred in cut site
-
-
-                    #check1 = [inseq[hit:hit+len(params.cut1)] == \
-                    #         outseq[hit:hit+len(params.cut1)] \
-                    #         for hit in hits1]
                     if 'ddrad' in params.datatype:
                         if any([cut in inseq for cut in cutlist2]):
-                            check2 = dropcheck[locus][haplo][1][:len(params.cut2)]
-                            if len(set(check2)) == 1:
-                                hits2 = 1
-                        #check2 = dropcheck[locus][haplo][1][-len(params.cut2):]
-                        #if len(set(check2)) == 1:
-                        #    hits2 = 1
-
-                        #for cut in cutlist2:
-                        #    if cut in inseq:
-                        #        hits2.append(inseq.index(cut))
-                        ## check whether hits are  relative to outgroup
-                        #check2 = [inseq[hit:hit+len(params.cut2)] == \
-                        #         outseq[hit:hit+len(params.cut2)] \
-                        #         for hit in hits2]
-                    #print hits1, hits2
-                    if not (hits1 or hits2): #any(check1) or any(check2)):
-                        keeps.append(aligns[locus][haplo])
+                            check2 = drop[-20:-20+len(params.cut2)]
+                            if len(set(check2)) > 1:
+                                #print check2 
+                                #print cutlist2                               
+                                where = np.array([inseq.find(cut) for cut \
+                                                             in cutlist2])
+                                if any(where > 0):
+                                    #print where
+                                    cutfrag = where[where > 0].min()
+                                    if frag-cutfrag < len(inseq):
+                                        #print cut, frag, cutfrag, len(inseq)
+                                        hits2 += 1
+                    if not hits1:
+                        if not hits2:
+                            keeps.append(aligns[locus][haplo])
+                        else:
+                            tt2 += 1
                     else:
-                        ttt += 1
+                        tt1 += 1
                 #else:
                 #    keeps.append(aligns[locus][haplo])
             if keeps:
                 keepgrp.append(egglib.Align.create(keeps))
             else:
                 keepgrp.append([])
-    #print ttt, 'dropped'
+    #print tt1, tt2, 'dropped'
     return keepgrp
 
 
@@ -368,7 +374,7 @@ def seq_copies(aligns, barcodes, params, counter, stepsize):
                                         float(params.depthmean),
                                         float(params.depthstd))))
                 else:
-                    ## exponential function (coming soon)
+                    ## TODO: exponential function 
                     pass
 
                 ## build dict
@@ -456,7 +462,7 @@ def run(params):
     ## get params
     tiptax, paramset = checkopts(params)
 
-    ## all data are simulated at the max fragment size of window
+    ## data are initially simulated at the min fragment size of window
     locuslength = params.min_insert+(2*params.length)
     theta = 4.*int(params.N)*params.mu*locuslength
     #print "\n\tTHETA={}".format(theta/locuslength)
@@ -519,7 +525,7 @@ def run(params):
         if not barcodes:
             barcodes = barcoder(names, params, barcodes)
 
-        if (params.dropout_cut or params.dropout_seq):
+        if params.dropout_cut or params.dropout_seq:
             dropcheck = egglib.simul.coalesce(
                             paramset, dropmutator, stepsize,
                             random=(localseed1, localseed2))
