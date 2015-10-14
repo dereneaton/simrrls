@@ -106,7 +106,7 @@ def parse():
         help="[str] restriction site 1 (default CCGG)")
 
     parser.add_argument('-i1', metavar="min_insert", dest='min_insert', 
-        type=int, default=100,
+        type=int, default=200,
         help="[int] total frag len = (2*l)+insert (default 100)")
 
     parser.add_argument('-i2', metavar="max_insert", dest='max_insert', 
