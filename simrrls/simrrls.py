@@ -229,9 +229,9 @@ def mutation_new_cut(params, aligns, dropcheck):
     keepgrp = []
     for locus in range(len(aligns)):
         ## get size for this locus
-        insert = np.random.randint(params.min_insert, 
-                                   params.max_insert)
-        frag = (2*params.length)+insert
+        #insert = np.random.randint(params.min_insert, 
+        #                           params.max_insert)
+        #frag = (2*params.length)+insert
 
         if aligns[locus]:
             ## get the outgroup seq at this locus
@@ -246,34 +246,27 @@ def mutation_new_cut(params, aligns, dropcheck):
                     hits1 = 0
                     hits2 = 0
                     ## find occurrence of cut site
-                    if any([cut in inseq for cut in cutlist1]):
+                    where = np.array([inseq.find(cut) for cut \
+                                                      in cutlist1])
+                    if any(where > 0):
+                        #print where, '1'                        
                         check1 = drop[20:20+len(params.cut1)]
                         ## if mutation occurred to give rise to this cut site
                         if len(set(check1)) > 1:
                             ## if new frag is less than min frag length
-                            where = np.array([inseq.find(cut) for cut \
-                                                           in cutlist1])
                             if any(where > 0):
-                                #print where, '1'
-                                cutfrag = where[where > 0].min()
-                                if frag-cutfrag < len(inseq):
-                                    #print cut, frag, cutfrag, len(inseq)
-                                    hits1 = 1
+                                hits1 = 1
 
                     if 'ddrad' in params.datatype:
-                        if any([cut in inseq for cut in cutlist2]):
+                        where = np.array([inseq.find(cut) for cut \
+                                                      in cutlist2])
+                        if any(where > 0):
+                            #print where, '2'
                             check2 = drop[-20:-20+len(params.cut2)]
                             if len(set(check2)) > 1:
-                                #print check2 
-                                #print cutlist2                               
-                                where = np.array([inseq.find(cut) for cut \
-                                                             in cutlist2])
-                                if any(where > 0):
-                                    #print where
-                                    cutfrag = where[where > 0].min()
-                                    if frag-cutfrag < len(inseq):
-                                        #print cut, frag, cutfrag, len(inseq)
-                                        hits2 += 1
+                                #print where, check2                                
+                                hits2 += 1
+
                     if not hits1:
                         if not hits2:
                             keeps.append(aligns[locus][haplo])
@@ -287,7 +280,7 @@ def mutation_new_cut(params, aligns, dropcheck):
                 keepgrp.append(egglib.Align.create(keeps))
             else:
                 keepgrp.append([])
-    #print tt1, tt2, 'dropped'
+    print tt1, tt2, 'dropped'
     return keepgrp
 
 
