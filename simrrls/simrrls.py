@@ -390,7 +390,7 @@ def seq_copies(aligns, barcodes, params, counter, stepsize):
                     ## 0------->insert<-------[frag]
                     reads[samp.name][copy] = reads[samp.name][copy][:frag]
 
-            if counter <= params.nLoci:
+            if counter < params.nLoci:
                 ## formats reads for the appropriate data type
                 seqs1, seqs2, counter = stacklist(params, reads, barcodes, 
                                                   counter, seqs1, seqs2)
@@ -501,7 +501,7 @@ def run(params):
     ## simulate the data
     barcodes = {}
     counter = 0
-    while counter <= params.nLoci: 
+    while counter < params.nLoci: 
         ##  this is a problem if cut is too frequent..
         ## seed has to change each iteration in a known way
         localseed1 = params.seed1 * (counter+1)
