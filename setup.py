@@ -7,9 +7,6 @@ requirements = [
     'numpy>1.7',
     ]
 
-## loads __version__
-#exec(open('simrrls/version.py').read())
-
 setup(
     name="simrrls",
     version=simrrls.__version__,
