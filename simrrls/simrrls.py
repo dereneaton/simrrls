@@ -280,7 +280,7 @@ def mutation_new_cut(params, aligns, dropcheck):
                 keepgrp.append(egglib.Align.create(keeps))
             else:
                 keepgrp.append([])
-    print tt1, tt2, 'dropped'
+    #print tt1, tt2, 'dropped'
     return keepgrp
 
 
