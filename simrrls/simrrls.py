@@ -145,7 +145,7 @@ def twodiffs(bara, barb):
     "requires two base differences between barcodes"
     if len(bara) == len(barb):
         sames = [bara[i] == barb[i] for i in range(len(bara))]
-        if sames.count(False) > 1:
+        if sames.count(False) > 2:
             return True
 
 
@@ -328,7 +328,8 @@ def seq_copies(aligns, barcodes, params, counter, stepsize):
     ## iterate over each locus 
     for loc in aligns:
         ## sample fragment in uniform size window for this locus
-        insert = np.random.randint(params.min_insert, params.max_insert)
+        #insert = np.random.randint(params.min_insert, params.max_insert)
+        insert = np.random.randint(0, params.max_insert - params.min_insert)
         frag = (2*params.length)+insert
 
         ## make sure all reads did not get disrupted
@@ -354,9 +355,16 @@ def seq_copies(aligns, barcodes, params, counter, stepsize):
                 if params.indels:
                     outseq = loc.sequenceByName("OUT_0")
                     for iloc, isize in zip(where[0], where[1]):
-                        if all([len(i) >= iloc for i in [tempseq, outseq]]):
-                            if tempseq[iloc] != outseq[iloc]:
-                                tempseq = tempseq[:iloc] + tempseq[iloc+isize:] 
+                        ## both tempseq and outseq must have iloc index
+                        if len(tempseq) > iloc:
+                            try:
+                                if tempseq[iloc] != outseq[iloc]:
+                                    tempseq = tempseq[:iloc] + tempseq[iloc+isize:] 
+                            except IndexError:
+                                print iloc, isize, where
+                                print len(tempseq), tempseq
+                                print len(outseq), outseq
+                                print ""
 
                 ## get copies
                 if params.depthfunc == 'norm':
