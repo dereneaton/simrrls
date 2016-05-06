@@ -15,3 +15,6 @@ eggs/
 *.egg-info/
 .installed.cfg
 *.egg
+=======
+*.pyc
+*.egg_info

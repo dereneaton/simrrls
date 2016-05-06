@@ -1,0 +1,3 @@
+[console_scripts]
+simrrls = simrrls.__main__:main
+
