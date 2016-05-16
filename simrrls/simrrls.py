@@ -328,8 +328,8 @@ def seq_copies(aligns, barcodes, params, counter, stepsize):
     ## iterate over each locus 
     for loc in aligns:
         ## sample fragment in uniform size window for this locus
-        #insert = np.random.randint(params.min_insert, params.max_insert)
-        insert = np.random.randint(0, params.max_insert - params.min_insert)
+        insert = np.random.randint(params.min_insert, params.max_insert)
+        #insert = np.random.randint(0, params.max_insert - params.min_insert)
         frag = (2*params.length)+insert
 
         ## make sure all reads did not get disrupted
@@ -397,6 +397,7 @@ def seq_copies(aligns, barcodes, params, counter, stepsize):
                     ## shorten fragment to potentially overlapping length"
                     ## 0------->insert<-------[frag]
                     reads[samp.name][copy] = reads[samp.name][copy][:frag]
+                    #print reads[samp.name][copy][:10], 'gotcha', frag
 
             if counter < params.nLoci:
                 ## formats reads for the appropriate data type
@@ -464,7 +465,7 @@ def run(params):
     tiptax, paramset = checkopts(params)
 
     ## data are initially simulated at the min fragment size of window
-    locuslength = params.min_insert+(2*params.length)
+    locuslength = params.max_insert+(2*params.length)
     theta = 4.*int(params.N)*params.mu*locuslength
     #print "\n\tTHETA={}".format(theta/locuslength)
 
