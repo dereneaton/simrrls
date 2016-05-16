@@ -11,7 +11,7 @@ Requirements
 
 Installation:
 -------------
-1. Install the `Egglib Python module <http://egglib.sourceforge.net/>`_.  
+1. Install the `Egglib Python module <http://egglib.sourceforge.net/>`_ v.2 (not v.3) `(I recommend these install instructions) <https://pmagwene.github.io/blog/2013/02/06/building-bio-plus-plus-and-egglib/>`_
 2. Download or clone *simrrls*.  
 3. `cd` into the top-level `simrrls/` directory.  
 4. run `pip install .`  
