@@ -397,7 +397,7 @@ def seq_copies(aligns, barcodes, params, counter, stepsize):
                     ## shorten fragment to potentially overlapping length"
                     ## 0------->insert<-------[frag]
                     reads[samp.name][copy] = reads[samp.name][copy][:frag]
-                    #print reads[samp.name][copy][:10], 'gotcha', frag
+                    #print len(reads[samp.name][copy][:frag]), 'gotcha', frag
 
             if counter < params.nLoci:
                 ## formats reads for the appropriate data type
