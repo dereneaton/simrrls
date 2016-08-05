@@ -13,8 +13,8 @@ Installation:
 -------------
 1. Install the `Egglib Python module <http://egglib.sourceforge.net/>`_ v.2 (not v.3) `(I recommend these install instructions) <http://wjidea.github.io/2016/installEgglib.html>`_
 2. Download or clone *simrrls*.  
-3. `cd` into the top-level `simrrls/` directory that contains the file setup.py
-4. run `pip install .`  or `python setup.py install`
+3. 'cd' into the top-level `simrrls/` directory that contains the file setup.py
+4. run 'pip install .'  or 'python setup.py install'
 
 Example usage: 
 ---------------
