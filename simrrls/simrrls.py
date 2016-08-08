@@ -176,10 +176,10 @@ def barcoder(names, params, barcodes):
     over2 = params.cut2[1:]
 
     bases = list("ATGC")
-    barcodes[names[0]] = "CATCAT"
+    barcodes[names[0]] = "CATCATCAT"
     for name in names:
         while name not in barcodes:
-            bbs = np.random.randint(0, 3, 6)
+            bbs = np.random.randint(0, 4, 9)
             bcd = "".join([bases[i] for i in bbs])
             if all([twodiffs(bcd, bb) for bb in barcodes.itervalues()]):
                 if not any([i in bcd for i in [over1, over2]]):
