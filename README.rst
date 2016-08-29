@@ -7,7 +7,7 @@ Requirements
 ------------
 + Python 2.7+
 + Numpy Python module
-+ `Egglib Python module <http://egglib.sourceforge.net/>`_
++ `Egglib Python module <http://mycor.nancy.inra.fr/egglib/>`_
 
 Installation:
 -------------
