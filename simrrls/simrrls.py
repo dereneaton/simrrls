@@ -413,6 +413,7 @@ def stacklist(params, reads, barcodes, counter, seqs1, seqs2):
     """ returns seqs formatted for the given data type """
 
     ## start of adapters/primers
+    #illumina_p1 = "ACGACGCTCTTCCGATCT"
     illumina_p1 = "ACGACGCTCTTCCGATCT"
     illumina_p2 = "AGATCGGAAGAGCTCGTATG"
 
@@ -443,18 +444,21 @@ def stacklist(params, reads, barcodes, counter, seqs1, seqs2):
                 ## ----> start from primer
                 start = reads[key][copy].index("CGATCT")+len("CGATCT")
                 sss = reads[key][copy][start:start+params.length]
-                seqs1.append("@lane1_locus"+str(counter)+"_"+\
-                             key+"_R1_"+str(copy)+" 1:N:0:"+"\n"+\
-                             sss+"\n+\n"+("B"*len(sss))+"\n")
+                seqs1.append("@lane1_locus{}_{}_{} 1:N:0\n{}\n+\n{}\n"\
+                             .format(str(counter), key, str(copy),
+                                     sss,
+                                     "B"*len(sss)))
 
                 ## sequence read2 from 3' end for paired read "
                 if 'pair' in params.datatype:
                     start = reads[key][copy].rindex("AGATCG")
                     ## <----
                     sss = reads[key][copy][start-params.length:start]
-                    seqs2.append("@lane1_locus"+str(counter)+"_"+key+\
-                                "_R2_"+str(copy)+" 1:N:0:"+"\n"+\
-                                revcomp(sss)+"\n+\n"+("B"*len(sss))+"\n")
+                    seqs2.append("@lane1_locus{}_{}_{} 2:N:0\n{}\n+\n{}\n"\
+                                 .format(str(counter), key, str(copy),
+                                         revcomp(sss),
+                                         "B"*len(sss)))
+                                         
     return seqs1, seqs2, counter
 
 
