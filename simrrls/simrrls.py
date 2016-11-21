@@ -466,7 +466,7 @@ def run(params):
 
     ## data are initially simulated at the min fragment size of window
     locuslength = params.max_insert+(2*params.length)
-    theta = 4.*int(params.N)*params.mu*locuslength
+    theta = 4.*float(params.N)*float(params.mu)*locuslength
     #print "\n\tTHETA={}".format(theta/locuslength)
 
     ## initialize random number sampling for numpy
