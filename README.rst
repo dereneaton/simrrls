@@ -11,10 +11,44 @@ Requirements
 
 Installation:
 -------------
-1. Install the `Egglib Python module <http://egglib.sourceforge.net/>`_ v.2 (not v.3) `(I recommend these install instructions) <http://wjidea.github.io/2016/installEgglib.html>`_
-2. Download or clone *simrrls*.  
-3. 'cd' into the top-level `simrrls/` directory that contains the file setup.py
-4. run 'pip install .'  or 'python setup.py install'
+1. Install the `Egglib Python module <http://egglib.sourceforge.net/>`_ v.2 (not v.3!). The instructions below are specifically for a conda (miniconda) installation. 
+
+.. code:: bash
+
+	  ## install gnu scientific library
+	  conda install gsl
+	  
+	  ## to to dir with egglib-cpp file, unzip it and move into the new dir
+	  tar -xzvf egglib-cpp-*.tar.gz
+	  cd egglib-cpp-*/
+
+	  ## following the INSTALL instructions configure and install,
+	  ## but add a prefix argument to direct installation into miniconda dir
+	  sh ./configure --prefix=/home/deren/miniconda2/
+	  make
+	  make install
+
+	  ## leave this directory and go to where the egglib-py-* dir is,
+	  ## unzip that archive and cd into it.
+	  cd ../
+	  tar -xzvf egglib-py-*.tar.gz
+	  cd egglib-py-*
+
+	  ## build egglib python file, run setup.py, it will install into miniconda
+	  python setup.py build
+	  python setup.py install
+	
+	  
+
+2. Clone *simrrls* repo and install
+
+.. code:: bash
+	  ## clone simrrls dir, move into the dir, and install with pip,
+	  ## don't miss the '.' in the pip install command.
+	  git clone https://github.com/dereneaton/simrrls.git
+	  cd simrrls/
+	  pip install -e .
+	  
 
 Example usage: 
 ---------------
