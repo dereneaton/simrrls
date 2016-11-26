@@ -40,9 +40,10 @@ Installation:
 	
 	  
 
-2. Clone *simrrls* repo and install
+2. Clone *simrrls* repo and install:
 
 .. code:: bash
+	  
 	  ## clone simrrls dir, move into the dir, and install with pip,
 	  ## don't miss the '.' in the pip install command.
 	  git clone https://github.com/dereneaton/simrrls.git
